@@ -115,7 +115,9 @@ function checkMonthlyGoalMet(habit, dateString) {
      const cur = new Date(year, month, i);
      if (isHabitLoggedOnDay(habit, dateStr(cur))) count++;
   }
-  return count >= habit.freqN;
+  let target = Math.round((habit.freqN / 31) * daysInMonth);
+  if (target < 1) target = 1;
+  return count >= target;
 }
 
 // Full check (logged today OR goal met)
@@ -350,13 +352,18 @@ function buildHabitCard(habit) {
   // Action
   const action = document.createElement('div');
   action.className = 'habit-action';
+  const isFuture = selectedDate > todayStr();
 
   if (habit.type === 'boolean') {
     const btn = document.createElement('button');
     btn.className = 'check-btn' + (done ? ' done' : '');
     btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { e.stopPropagation(); toggleBoolean(habit); });
+    btn.addEventListener('click', e => { 
+        e.stopPropagation(); 
+        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
+        toggleBoolean(habit); 
+    });
     action.appendChild(btn);
 
   } else if (habit.type === 'number') {
@@ -371,7 +378,11 @@ function buildHabitCard(habit) {
     btn.className = 'log-btn' + (done ? ' done' : '');
     btn.textContent = done ? '✓ Fatto' : '+ Log';
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
+    btn.addEventListener('click', e => { 
+        e.stopPropagation(); 
+        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
+        openLogModal(habit); 
+    });
     wrap.appendChild(btn);
     action.appendChild(wrap);
 
@@ -390,7 +401,11 @@ function buildHabitCard(habit) {
       btn.textContent = '▶ Avvia';
     }
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
+    btn.addEventListener('click', e => { 
+        e.stopPropagation(); 
+        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
+        openLogModal(habit); 
+    });
     wrap.appendChild(btn);
     action.appendChild(wrap);
   }
@@ -463,7 +478,7 @@ function openLogModal(habit) {
     wrap.className = 'log-number-wrap';
     wrap.innerHTML = `
       <div class="log-number-display">
-        <span id="log-num-val">${val}</span>
+        <input type="number" id="log-num-val" value="${val}" style="background:transparent; border:none; outline:none; font-family:var(--font-display); font-size:4rem; color:var(--text); text-align:center; width:120px;" />
         <span class="log-number-unit">${habit.unit || ''}</span>
       </div>
       <div class="log-stepper">
@@ -473,6 +488,7 @@ function openLogModal(habit) {
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn-primary'; saveBtn.textContent = 'Salva';
     saveBtn.addEventListener('click', async () => {
+      val = Number(document.getElementById('log-num-val').value) || 0;
       await saveLog(habit.id, val);
       closeLogModal();
       toast(`${habit.emoji} Salvato: ${val} ${habit.unit || ''}`);
@@ -480,11 +496,14 @@ function openLogModal(habit) {
     wrap.appendChild(saveBtn);
     body.appendChild(wrap);
 
+    const inputObj = document.getElementById('log-num-val');
     document.getElementById('step-up').addEventListener('click', () => {
-      val++; document.getElementById('log-num-val').textContent = val;
+      val = Number(inputObj.value) || 0;
+      val++; inputObj.value = val;
     });
     document.getElementById('step-down').addEventListener('click', () => {
-      if (val > 0) { val--; document.getElementById('log-num-val').textContent = val; }
+      val = Number(inputObj.value) || 0;
+      if (val > 0) { val--; inputObj.value = val; }
     });
 
   } else if (habit.type === 'timer') {
@@ -496,14 +515,19 @@ function openLogModal(habit) {
 
     const wrap = document.createElement('div');
     wrap.className = 'timer-log-wrap';
+    const minElapsed = Math.floor(logTimerElapsed / 60);
     wrap.innerHTML = `
       <div class="timer-log-display" id="log-timer-disp">${fmtTime(logTimerElapsed)}</div>
       <div class="timer-controls">
         <button class="timer-ctrl-btn primary" id="log-timer-toggle">▶ Avvia</button>
         <button class="timer-ctrl-btn" id="log-timer-reset">↺ Reset</button>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:8px; align-items:center; width:100%; justify-content:center;">
+         <label style="font-size:0.8rem; color:var(--text2);">Minuti (manuale):</label>
+         <input type="number" id="manual-mins" placeholder="es. 30" style="background:var(--bg3); color:var(--text); font-size:1.1rem; width:70px; border:1px solid var(--border); border-radius:8px; padding:6px; text-align:center;" min="0" value="${minElapsed > 0 ? minElapsed : ''}" />
       </div>`;
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn-primary'; saveBtn.style.marginTop = '8px';
+    saveBtn.className = 'btn-primary'; saveBtn.style.marginTop = '16px';
     saveBtn.textContent = 'Salva tempo';
     saveBtn.addEventListener('click', async () => {
       if (logTimerRunning) stopLogTimer();
@@ -521,6 +545,14 @@ function openLogModal(habit) {
       stopLogTimer();
       logTimerElapsed = 0;
       document.getElementById('log-timer-disp').textContent = fmtTime(0);
+      document.getElementById('manual-mins').value = '';
+    });
+    document.getElementById('manual-mins').addEventListener('input', e => {
+      const m = Number(e.target.value);
+      if (m >= 0) {
+         logTimerElapsed = m * 60;
+         document.getElementById('log-timer-disp').textContent = fmtTime(logTimerElapsed);
+      }
     });
   }
 
@@ -676,6 +708,10 @@ document.getElementById('save-habit-btn').addEventListener('click', async () => 
   const name = document.getElementById('habit-name').value.trim();
   if (!name) { toast('Inserisci un nome!'); return; }
 
+  let fN = Number(document.getElementById(selectedFreq === 'weekly' ? 'freq-weekly-n' : 'freq-monthly-n').value) || null;
+  if (selectedFreq === 'weekly' && fN > 7) fN = 7;
+  if (selectedFreq === 'monthly' && fN > 31) fN = 31;
+
   const habitData = {
     name,
     emoji: selectedEmoji,
@@ -683,7 +719,7 @@ document.getElementById('save-habit-btn').addEventListener('click', async () => 
     type: selectedType,
     freq: selectedFreq,
     freqDays: selectedDays.map(Number),
-    freqN: Number(document.getElementById(selectedFreq === 'weekly' ? 'freq-weekly-n' : 'freq-monthly-n').value) || null,
+    freqN: fN,
     goal: Number(document.getElementById('habit-goal').value) || null,
     unit: document.getElementById('habit-unit').value.trim() || null,
     duration: Number(document.getElementById('habit-duration').value) || null,
@@ -715,14 +751,47 @@ document.getElementById('delete-habit-btn').addEventListener('click', async () =
 function computeStreak(habit) {
   let streak = 0;
   const today = new Date();
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const ds = dateStr(d);
-    if (!habitScheduledFor(habit, ds)) continue;
-    if (isHabitDone(habit, ds)) streak++;
-    else if (i > 0) break; // Allow today to be incomplete
-    else continue;
+  
+  if (habit.freq === 'weekly' && habit.freqN) {
+    const startOfCurrentWeek = new Date(today);
+    const day = startOfCurrentWeek.getDay();
+    const diff = startOfCurrentWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfCurrentWeek.setDate(diff); // Monday
+    
+    if (checkWeeklyGoalMet(habit, dateStr(startOfCurrentWeek))) streak++;
+    
+    let wStart = new Date(startOfCurrentWeek);
+    for (let i = 1; i < 52; i++) {
+        wStart.setDate(wStart.getDate() - 7);
+        if (checkWeeklyGoalMet(habit, dateStr(wStart))) streak++;
+        else break;
+    }
+  } 
+  else if (habit.freq === 'monthly' && habit.freqN) {
+    let y = today.getFullYear();
+    let m = today.getMonth();
+    
+    const curMonthDs = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    if (checkMonthlyGoalMet(habit, curMonthDs)) streak++;
+    
+    for (let i = 1; i < 12; i++) {
+        m--;
+        if (m < 0) { m = 11; y--; }
+        const checkDs = `${y}-${String(m+1).padStart(2,'0')}-01`;
+        if (checkMonthlyGoalMet(habit, checkDs)) streak++;
+        else break;
+    }
+  } 
+  else {
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const ds = dateStr(d);
+      if (!habitScheduledFor(habit, ds)) continue;
+      if (isHabitLoggedOnDay(habit, ds)) streak++;
+      else if (i > 0) break; // Allow today to be incomplete
+      else continue;
+    }
   }
   return streak;
 }
