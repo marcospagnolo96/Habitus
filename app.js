@@ -359,11 +359,11 @@ function buildHabitCard(habit) {
     btn.className = 'check-btn' + (done ? ' done' : '');
     btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { 
-        e.stopPropagation(); 
-        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
-        toggleBoolean(habit); 
-    });
+    if (isFuture) {
+        btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
+    } else {
+        btn.addEventListener('click', e => { e.stopPropagation(); toggleBoolean(habit); });
+    }
     action.appendChild(btn);
 
   } else if (habit.type === 'number') {
@@ -378,11 +378,11 @@ function buildHabitCard(habit) {
     btn.className = 'log-btn' + (done ? ' done' : '');
     btn.textContent = done ? '✓ Fatto' : '+ Log';
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { 
-        e.stopPropagation(); 
-        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
-        openLogModal(habit); 
-    });
+    if (isFuture) {
+        btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
+    } else {
+        btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
+    }
     wrap.appendChild(btn);
     action.appendChild(wrap);
 
@@ -401,11 +401,11 @@ function buildHabitCard(habit) {
       btn.textContent = '▶ Avvia';
     }
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
-    btn.addEventListener('click', e => { 
-        e.stopPropagation(); 
-        if (isFuture) { toast('Non puoi inserire per giorni futuri!'); return; }
-        openLogModal(habit); 
-    });
+    if (isFuture) {
+        btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
+    } else {
+        btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
+    }
     wrap.appendChild(btn);
     action.appendChild(wrap);
   }
@@ -477,9 +477,9 @@ function openLogModal(habit) {
     const wrap = document.createElement('div');
     wrap.className = 'log-number-wrap';
     wrap.innerHTML = `
-      <div class="log-number-display">
-        <input type="number" id="log-num-val" value="${val}" style="background:transparent; border:none; outline:none; font-family:var(--font-display); font-size:4rem; color:var(--text); text-align:center; width:120px;" />
-        <span class="log-number-unit">${habit.unit || ''}</span>
+      <div class="log-number-display" style="align-items:center;">
+        <input type="number" id="log-num-val" value="${val}" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
+        <span class="log-number-unit" style="margin-left:12px;">${habit.unit || ''}</span>
       </div>
       <div class="log-stepper">
         <button class="step-btn" id="step-down">−</button>
@@ -688,6 +688,14 @@ function updateFreqConfig() {
   document.getElementById('freq-days-config').classList.toggle('hidden', selectedFreq !== 'days');
   document.getElementById('freq-monthly-config').classList.toggle('hidden', selectedFreq !== 'monthly');
 }
+
+// Controllo visivo immediato (limite rigido)
+document.getElementById('freq-weekly-n').addEventListener('input', e => {
+  if (Number(e.target.value) > 7) e.target.value = 7;
+});
+document.getElementById('freq-monthly-n').addEventListener('input', e => {
+  if (Number(e.target.value) > 31) e.target.value = 31;
+});
 
 // Days pick
 document.getElementById('days-picker').addEventListener('click', e => {
