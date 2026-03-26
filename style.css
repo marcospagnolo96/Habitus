@@ -422,8 +422,7 @@ input::placeholder { color: var(--text3); }
   padding-bottom: var(--safe-bottom);
   background: var(--bg2);
   border-top: 1px solid var(--border);
-  display: flex; align-items: flex-start; justify-content: space-around;
-  padding-top: 10px;
+  display: flex; align-items: center; justify-content: space-around;
   z-index: 100;
 }
 .nav-btn {
@@ -435,6 +434,28 @@ input::placeholder { color: var(--text3); }
   cursor: pointer;
   transition: color 0.2s;
   letter-spacing: 0.04em;
+  flex: 1;
+}
+.nav-fab-wrapper {
+  position: relative;
+  width: 60px; height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  top: -20px;
+}
+.nav-fab {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c47ff, #c8b8ff);
+  color: #fff;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(108, 71, 255, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.nav-fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(108, 71, 255, 0.4);
 }
 .nav-btn.active { color: var(--accent); }
 .nav-btn svg { transition: stroke 0.2s; }

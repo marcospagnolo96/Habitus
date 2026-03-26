@@ -202,10 +202,14 @@ function buildDateStrip() {
   const strip = document.getElementById('date-strip');
   strip.innerHTML = '';
   const days = ['Do','Lu','Ma','Me','Gi','Ve','Sa'];
-  const today = new Date();
-  for (let i = -6; i <= 0; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+  
+  const [sy, sm, sd] = selectedDate.split('-');
+  const year = parseInt(sy);
+  const month = parseInt(sm) - 1;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    const d = new Date(year, month, i);
     const ds = dateStr(d);
     const pill = document.createElement('div');
     pill.className = 'date-pill' + (ds === selectedDate ? ' active' : '');
@@ -224,8 +228,14 @@ function buildDateStrip() {
     });
     strip.appendChild(pill);
   }
-  // Scroll to end
-  setTimeout(() => strip.parentElement.scrollLeft = 9999, 50);
+  
+  // Scroll to active date smoothly
+  setTimeout(() => {
+    const active = strip.querySelector('.active');
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, 50);
 }
 
 // ─── RENDER HABITS ───────────────────────────────────────────────
