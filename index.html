@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f0f14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Habitus" />
+  <title>Habitus</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-bg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+  <div class="auth-content">
+    <div class="auth-logo">
+      <span class="logo-mark">◆</span>
+      <h1>Habitus</h1>
+      <p>Le tue abitudini, illuminate.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Accedi</button>
+        <button class="auth-tab" data-tab="register">Registrati</button>
+      </div>
+      <div id="auth-error" class="auth-error hidden"></div>
+      <form id="login-form" class="auth-form">
+        <div class="field-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="tu@email.com" required />
+        </div>
+        <div class="field-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-primary">Entra →</button>
+      </form>
+      <form id="register-form" class="auth-form hidden">
+        <div class="field-group">
+          <label>Nome</label>
+          <input type="text" id="reg-name" placeholder="Il tuo nome" required />
+        </div>
+        <div class="field-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="tu@email.com" required />
+        </div>
+        <div class="field-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="min. 6 caratteri" required />
+        </div>
+        <button type="submit" class="btn-primary">Crea account →</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app-screen" class="screen">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="logo-mark-sm">◆</span>
+      <div>
+        <div class="greeting" id="greeting">Buongiorno</div>
+        <div class="user-name" id="user-display-name">Utente</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="btn-add-habit" title="Nuova abitudine">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-logout" title="Esci">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- DATE STRIP -->
+  <div class="date-strip-wrapper">
+    <div class="date-strip" id="date-strip"></div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="daily-progress">
+    <div class="progress-info">
+      <span id="progress-label">0 / 0 completate oggi</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- HABITS LIST -->
+  <main class="habits-container" id="habits-container">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">◇</div>
+      <p>Nessuna abitudine ancora.<br/>Premi <strong>+</strong> per iniziare!</p>
+    </div>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="today">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Oggi</span>
+    </button>
+    <button class="nav-btn" data-view="stats">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Statistiche</span>
+    </button>
+  </nav>
+</div>
+
+<!-- STATS VIEW -->
+<div id="stats-view" class="overlay-view hidden">
+  <div class="overlay-header">
+    <button class="back-btn" id="stats-back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      Indietro
+    </button>
+    <h2>Statistiche</h2>
+  </div>
+  <div class="stats-habit-selector" id="stats-habit-selector"></div>
+  <div class="stats-content" id="stats-content"></div>
+</div>
+
+<!-- ADD/EDIT HABIT MODAL -->
+<div id="habit-modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="modal-title">Nuova Abitudine</h3>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label>Nome</label>
+        <input type="text" id="habit-name" placeholder="Es. Meditazione, Palestra…" />
+      </div>
+      <div class="field-group">
+        <label>Icona</label>
+        <div class="emoji-picker" id="emoji-picker">
+          <span class="emoji-opt selected" data-e="🌱">🌱</span>
+          <span class="emoji-opt" data-e="💪">💪</span>
+          <span class="emoji-opt" data-e="📚">📚</span>
+          <span class="emoji-opt" data-e="🧘">🧘</span>
+          <span class="emoji-opt" data-e="💧">💧</span>
+          <span class="emoji-opt" data-e="🏃">🏃</span>
+          <span class="emoji-opt" data-e="🎯">🎯</span>
+          <span class="emoji-opt" data-e="✍️">✍️</span>
+          <span class="emoji-opt" data-e="😴">😴</span>
+          <span class="emoji-opt" data-e="🥗">🥗</span>
+          <span class="emoji-opt" data-e="🎵">🎵</span>
+          <span class="emoji-opt" data-e="💊">💊</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Colore</label>
+        <div class="color-picker" id="color-picker">
+          <span class="color-opt selected" data-c="#4ade80" style="background:#4ade80"></span>
+          <span class="color-opt" data-c="#60a5fa" style="background:#60a5fa"></span>
+          <span class="color-opt" data-c="#f472b6" style="background:#f472b6"></span>
+          <span class="color-opt" data-c="#fb923c" style="background:#fb923c"></span>
+          <span class="color-opt" data-c="#a78bfa" style="background:#a78bfa"></span>
+          <span class="color-opt" data-c="#34d399" style="background:#34d399"></span>
+          <span class="color-opt" data-c="#fbbf24" style="background:#fbbf24"></span>
+          <span class="color-opt" data-c="#f87171" style="background:#f87171"></span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Tipo di tracciamento</label>
+        <div class="type-selector" id="type-selector">
+          <button class="type-btn active" data-type="boolean">✓ Sì/No</button>
+          <button class="type-btn" data-type="number">🔢 Numero</button>
+          <button class="type-btn" data-type="timer">⏱ Timer</button>
+        </div>
+      </div>
+      <div id="number-config" class="field-group hidden">
+        <label>Obiettivo</label>
+        <div class="inline-fields">
+          <input type="number" id="habit-goal" placeholder="Es. 8" min="1" />
+          <input type="text" id="habit-unit" placeholder="Es. bicchieri, km…" />
+        </div>
+      </div>
+      <div id="timer-config" class="field-group hidden">
+        <label>Durata obiettivo (minuti)</label>
+        <input type="number" id="habit-duration" placeholder="Es. 30" min="1" />
+      </div>
+      <div class="field-group">
+        <label>Frequenza</label>
+        <div class="freq-selector" id="freq-selector">
+          <button class="freq-btn active" data-freq="daily">Ogni giorno</button>
+          <button class="freq-btn" data-freq="weekly">X/settimana</button>
+          <button class="freq-btn" data-freq="days">Giorni fissi</button>
+          <button class="freq-btn" data-freq="monthly">X/mese</button>
+        </div>
+      </div>
+      <div id="freq-weekly-config" class="field-group hidden">
+        <label>Volte a settimana</label>
+        <input type="number" id="freq-weekly-n" min="1" max="7" placeholder="Es. 3" />
+      </div>
+      <div id="freq-days-config" class="field-group hidden">
+        <label>Giorni della settimana</label>
+        <div class="days-picker" id="days-picker">
+          <span class="day-btn" data-d="1">L</span>
+          <span class="day-btn" data-d="2">M</span>
+          <span class="day-btn" data-d="3">M</span>
+          <span class="day-btn" data-d="4">G</span>
+          <span class="day-btn" data-d="5">V</span>
+          <span class="day-btn" data-d="6">S</span>
+          <span class="day-btn" data-d="0">D</span>
+        </div>
+      </div>
+      <div id="freq-monthly-config" class="field-group hidden">
+        <label>Volte al mese</label>
+        <input type="number" id="freq-monthly-n" min="1" max="31" placeholder="Es. 10" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="save-habit-btn">Salva abitudine</button>
+        <button class="btn-danger hidden" id="delete-habit-btn">Elimina abitudine</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOG VALUE MODAL -->
+<div id="log-modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="log-modal-title">Registra</h3>
+      <button class="modal-close" id="log-modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="log-modal-body"></div>
+  </div>
+</div>
+
+<!-- FIREBASE SDK -->
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
