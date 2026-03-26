@@ -81,13 +81,48 @@ function habitScheduledFor(habit, dateString) {
   }
 }
 
-// Check if habit is "done" for a date
-function isHabitDone(habit, dateString) {
+// Base log check for a specific day
+function isHabitLoggedOnDay(habit, dateString) {
   const entry = (logs[dateString] || {})[habit.id];
   if (entry === undefined || entry === null) return false;
   if (habit.type === 'boolean') return entry === true;
   if (habit.type === 'number')  return Number(entry) >= Number(habit.goal || 1);
   if (habit.type === 'timer')   return Number(entry) >= Number(habit.duration || 1) * 60;
+  return false;
+}
+
+function checkWeeklyGoalMet(habit, dateString) {
+  if (!habit.freqN) return false;
+  const d = new Date(dateString + 'T12:00:00');
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday is start of week
+  const start = new Date(d); start.setDate(diff);
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+     const cur = new Date(start); cur.setDate(start.getDate() + i);
+     if (isHabitLoggedOnDay(habit, dateStr(cur))) count++;
+  }
+  return count >= habit.freqN;
+}
+
+function checkMonthlyGoalMet(habit, dateString) {
+  if (!habit.freqN) return false;
+  const [y, m] = dateString.split('-');
+  const year = parseInt(y); const month = parseInt(m) - 1;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let i = 1; i <= daysInMonth; i++) {
+     const cur = new Date(year, month, i);
+     if (isHabitLoggedOnDay(habit, dateStr(cur))) count++;
+  }
+  return count >= habit.freqN;
+}
+
+// Full check (logged today OR goal met)
+function isHabitDone(habit, dateString) {
+  if (isHabitLoggedOnDay(habit, dateString)) return true;
+  if (habit.freq === 'weekly') return checkWeeklyGoalMet(habit, dateString);
+  if (habit.freq === 'monthly') return checkMonthlyGoalMet(habit, dateString);
   return false;
 }
 
@@ -302,7 +337,7 @@ function buildHabitCard(habit) {
     dot.className = 'led-dot';
     if (!habitScheduledFor(habit, ds)) {
        dot.classList.add('skip');
-    } else if (isHabitDone(habit, ds)) {
+    } else if (isHabitLoggedOnDay(habit, ds)) {
        dot.classList.add('on');
     }
     leds.appendChild(dot);
@@ -748,7 +783,7 @@ function renderStatsDashboard() {
        rect.className = 'dash-rect';
        if (!habitScheduledFor(habit, ds)) {
           rect.classList.add('skip');
-       } else if (isHabitDone(habit, ds)) {
+       } else if (isHabitLoggedOnDay(habit, ds)) {
           rect.classList.add('on');
        } else if (ds > todayStr()) {
           rect.classList.add('future');
@@ -820,7 +855,7 @@ function renderStats(habitId) {
     if (!habitScheduledFor(habit, ds)) { last30.push(null); continue; }
     totalDays++;
     const entry = (logs[ds] || {})[habit.id];
-    const done = isHabitDone(habit, ds);
+    const done = isHabitLoggedOnDay(habit, ds);
     if (done) doneDays++;
     if (entry !== undefined && entry !== null && entry !== false) {
       if (habit.type === 'number' || habit.type === 'timer') {
