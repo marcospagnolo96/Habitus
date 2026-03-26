@@ -325,7 +325,10 @@ function buildHabitCard(habit) {
   meta.className = 'habit-meta';
   meta.innerHTML = `<span>${freqLabel(habit)}</span>`;
   if (streak > 0) {
-    meta.innerHTML += `<span class="habit-streak">🔥 ${streak}</span>`;
+    let sUnit = '';
+    if (habit.freq === 'weekly') sUnit = ' sett';
+    if (habit.freq === 'monthly') sUnit = ' mesi';
+    meta.innerHTML += `<span class="habit-streak">🔥 ${streak}${sUnit}</span>`;
   }
 
   const leds = document.createElement('div');
