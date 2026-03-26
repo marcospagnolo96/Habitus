@@ -131,14 +131,17 @@
 <!-- STATS VIEW -->
 <div id="stats-view" class="overlay-view hidden">
   <div class="overlay-header">
-    <button class="back-btn" id="stats-back">
+    <button class="back-btn hidden" id="stats-back">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       Indietro
     </button>
-    <h2>Statistiche</h2>
+    <h2 id="stats-main-title">Statistiche</h2>
   </div>
-  <div class="stats-habit-selector" id="stats-habit-selector"></div>
-  <div class="stats-content" id="stats-content"></div>
+  <div id="stats-dashboard" class="stats-dashboard"></div>
+  <div id="stats-detail-view" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="stats-habit-selector" id="stats-habit-selector"></div>
+    <div class="stats-content" id="stats-content"></div>
+  </div>
 </div>
 
 <!-- ADD/EDIT HABIT MODAL -->

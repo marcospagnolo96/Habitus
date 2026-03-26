@@ -203,13 +203,13 @@ function buildDateStrip() {
   strip.innerHTML = '';
   const days = ['Do','Lu','Ma','Me','Gi','Ve','Sa'];
   
-  const [sy, sm, sd] = selectedDate.split('-');
+  const [sy] = selectedDate.split('-');
   const year = parseInt(sy);
-  const month = parseInt(sm) - 1;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const totalDays = isLeapYear ? 366 : 365;
 
-  for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(year, month, i);
+  for (let i = 1; i <= totalDays; i++) {
+    const d = new Date(year, 0, i);
     const ds = dateStr(d);
     const pill = document.createElement('div');
     pill.className = 'date-pill' + (ds === selectedDate ? ' active' : '');
@@ -291,8 +291,26 @@ function buildHabitCard(habit) {
     meta.innerHTML += `<span class="habit-streak">🔥 ${streak}</span>`;
   }
 
+  const leds = document.createElement('div');
+  leds.className = 'habit-leds';
+  const selD = new Date(selectedDate + 'T12:00:00');
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(selD);
+    d.setDate(selD.getDate() - i);
+    const ds = dateStr(d);
+    const dot = document.createElement('div');
+    dot.className = 'led-dot';
+    if (!habitScheduledFor(habit, ds)) {
+       dot.classList.add('skip');
+    } else if (isHabitDone(habit, ds)) {
+       dot.classList.add('on');
+    }
+    leds.appendChild(dot);
+  }
+
   info.appendChild(name);
   info.appendChild(meta);
+  info.appendChild(leds);
 
   // Action
   const action = document.createElement('div');
@@ -679,7 +697,11 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    if (btn.dataset.view === 'stats') openStats();
+    if (btn.dataset.view === 'stats') {
+      openStats();
+    } else if (btn.dataset.view === 'today') {
+      document.getElementById('stats-view').classList.add('hidden');
+    }
   });
 });
 
@@ -687,18 +709,79 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 function openStats() {
   const view = document.getElementById('stats-view');
   view.classList.remove('hidden');
+  document.getElementById('stats-dashboard').classList.remove('hidden');
+  document.getElementById('stats-detail-view').classList.add('hidden');
+  document.getElementById('stats-main-title').textContent = 'Statistiche';
+  document.getElementById('stats-back').classList.add('hidden');
+  
+  renderStatsDashboard();
+}
+
+function renderStatsDashboard() {
+  const dash = document.getElementById('stats-dashboard');
+  dash.innerHTML = '';
+  
+  const grid = document.createElement('div');
+  grid.className = 'dashboard-grid';
+  
+  habits.forEach(habit => {
+    const card = document.createElement('div');
+    card.className = 'dashboard-card';
+    card.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+    
+    const hdr = document.createElement('div');
+    hdr.className = 'dash-card-header';
+    hdr.innerHTML = `<span class="dash-emoji">${habit.emoji}</span><span class="dash-name">${habit.name}</span>`;
+    
+    const hm = document.createElement('div');
+    hm.className = 'dash-heatmap';
+    
+    const today = new Date();
+    const currYear = today.getFullYear();
+    const currMonth = today.getMonth();
+    const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+       const d = new Date(currYear, currMonth, i);
+       const ds = dateStr(d);
+       const rect = document.createElement('div');
+       rect.className = 'dash-rect';
+       if (!habitScheduledFor(habit, ds)) {
+          rect.classList.add('skip');
+       } else if (isHabitDone(habit, ds)) {
+          rect.classList.add('on');
+       } else if (ds > todayStr()) {
+          rect.classList.add('future');
+       }
+       hm.appendChild(rect);
+    }
+    
+    card.appendChild(hdr);
+    card.appendChild(hm);
+    card.addEventListener('click', () => { openHabitDetail(habit.id); });
+    
+    grid.appendChild(card);
+  });
+  
+  dash.appendChild(grid);
+}
+
+function openHabitDetail(habitId) {
+  document.getElementById('stats-dashboard').classList.add('hidden');
+  document.getElementById('stats-detail-view').classList.remove('hidden');
+  document.getElementById('stats-main-title').textContent = 'Dettagli';
+  document.getElementById('stats-back').classList.remove('hidden');
+  
+  statsHabitId = habitId;
   buildHabitChips();
-  if (habits.length > 0) {
-    statsHabitId = habits[0].id;
-    renderStats(statsHabitId);
-  }
+  renderStats(habitId);
 }
 
 document.getElementById('stats-back').addEventListener('click', () => {
-  document.getElementById('stats-view').classList.add('hidden');
-  document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === 'today');
-  });
+  document.getElementById('stats-detail-view').classList.add('hidden');
+  document.getElementById('stats-dashboard').classList.remove('hidden');
+  document.getElementById('stats-main-title').textContent = 'Statistiche';
+  document.getElementById('stats-back').classList.add('hidden');
 });
 
 function buildHabitChips() {
