@@ -368,69 +368,27 @@ input::placeholder { color: var(--text3); }
 
 .habit-action { flex-shrink: 0; }
 
-/* BOOLEAN ACTION */
-.check-btn {
-  width: 46px; height: 46px;
+/* ─── ACTION BUTTONS ───────────────────────────────────────────── */
+.circle-action-btn {
+  width: 48px; height: 48px;
   border-radius: 50%;
   border: 2px solid var(--habit-color, #c8b8ff);
   background: transparent;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s cubic-bezier(.16,1,.3,1);
-  color: transparent;
-  font-size: 1.3rem;
+  color: var(--habit-color, #c8b8ff);
+  font-family: var(--font-display);
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
 }
-.check-btn.done {
+.circle-action-btn.done {
   background: var(--habit-color, #c8b8ff);
   color: #0f0f14;
 }
-.check-btn svg { stroke: var(--habit-color, #c8b8ff); transition: stroke 0.2s; }
-.check-btn.done svg { stroke: #0f0f14; }
-
-/* NUMBER ACTION */
-.number-action {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
-}
-.number-value {
-  font-size: 1.3rem; font-weight: 700;
-  color: var(--habit-color, #c8b8ff);
-  line-height: 1;
-}
-.number-goal { font-size: 0.7rem; color: var(--text3); }
-.log-btn {
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--habit-color, #c8b8ff);
-  background: transparent;
-  color: var(--habit-color, #c8b8ff);
-  font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.log-btn.done { background: var(--habit-color, #c8b8ff); color: #0f0f14; }
-.log-btn:active { transform: scale(0.95); }
-
-/* TIMER ACTION */
-.timer-action { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.timer-display {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  color: var(--habit-color, #c8b8ff);
-  letter-spacing: 0.04em;
-  min-width: 72px; text-align: right;
-}
-.timer-btn {
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--habit-color, #c8b8ff);
-  background: transparent;
-  color: var(--habit-color, #c8b8ff);
-  font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.timer-btn.running { background: var(--habit-color, #c8b8ff); color: #0f0f14; }
-.timer-btn.done { background: var(--habit-color, #c8b8ff); color: #0f0f14; opacity: 0.7; }
+.circle-action-btn svg { stroke: var(--habit-color, #c8b8ff); transition: stroke 0.2s; }
+.circle-action-btn.done svg { stroke: #0f0f14; }
 
 /* ─── BOTTOM NAV ─────────────────────────────────────────────── */
 .bottom-nav {

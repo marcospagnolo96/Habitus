@@ -1,5 +1,5 @@
 // Habitus — Service Worker
-const CACHE = 'habitus-v2';
+const CACHE = 'habitus-v3';
 const ASSETS = [
   './',
   './index.html',

@@ -359,8 +359,8 @@ function buildHabitCard(habit) {
 
   if (habit.type === 'boolean') {
     const btn = document.createElement('button');
-    btn.className = 'check-btn' + (done ? ' done' : '');
-    btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
@@ -370,47 +370,35 @@ function buildHabitCard(habit) {
     action.appendChild(btn);
 
   } else if (habit.type === 'number') {
-    const wrap = document.createElement('div');
-    wrap.className = 'number-action';
     const val = Number(entry || 0);
-    const goal = Number(habit.goal || 1);
-    wrap.innerHTML = `
-      <span class="number-value" style="color:${habit.color}">${val}<span class="number-unit" style="font-size:.7rem;color:var(--text2)">${habit.unit || ''}</span></span>
-      <span class="number-goal">/ ${goal} ${habit.unit || ''}</span>`;
     const btn = document.createElement('button');
-    btn.className = 'log-btn' + (done ? ' done' : '');
-    btn.textContent = done ? '✓ Fatto' : '+ Log';
+    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    
+    let fSize = '1.1rem';
+    if (val.toString().length > 3) fSize = '0.75rem';
+    else if (val.toString().length > 2) fSize = '0.9rem';
+
+    btn.innerHTML = `<span style="font-size: ${fSize}">${val}</span>`;
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
     } else {
         btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
     }
-    wrap.appendChild(btn);
-    action.appendChild(wrap);
+    action.appendChild(btn);
 
   } else if (habit.type === 'timer') {
-    const wrap = document.createElement('div');
-    wrap.className = 'timer-action';
     const elapsed = Number(entry || 0);
-    const goal = Number(habit.duration || 1) * 60;
-    wrap.innerHTML = `<span class="timer-display" style="color:${habit.color}">${fmtTime(elapsed)}</span>`;
     const btn = document.createElement('button');
-    if (done) {
-      btn.className = 'timer-btn done';
-      btn.textContent = '✓ Fatto';
-    } else {
-      btn.className = 'timer-btn';
-      btn.textContent = '▶ Avvia';
-    }
+    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    btn.innerHTML = `<span style="font-size: 0.8rem">${fmtTime(elapsed)}</span>`;
     btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
     } else {
         btn.addEventListener('click', e => { e.stopPropagation(); openLogModal(habit); });
     }
-    wrap.appendChild(btn);
-    action.appendChild(wrap);
+    action.appendChild(btn);
   }
 
   card.appendChild(emojiEl);
