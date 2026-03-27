@@ -38,6 +38,37 @@ let statsHabitId = null;
 let unsubHabits = null;
 let unsubLogs = null;
 
+// ─── THEME HANDLING ─────────────────────────────────────────────
+const btnThemeToggle = document.getElementById('btn-theme-toggle');
+const iconLight = document.getElementById('icon-theme-light');
+const iconDark = document.getElementById('icon-theme-dark');
+const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+
+let currentTheme = localStorage.getItem('theme') || 'dark';
+applyTheme(currentTheme);
+
+if (btnThemeToggle) {
+  btnThemeToggle.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  });
+}
+
+function applyTheme(theme) {
+  localStorage.setItem('theme', theme);
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (iconLight) iconLight.classList.remove('hidden');
+    if (iconDark) iconDark.classList.add('hidden');
+    if (metaThemeColor) metaThemeColor.setAttribute('content', '#f8fafc');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    if (iconLight) iconLight.classList.add('hidden');
+    if (iconDark) iconDark.classList.remove('hidden');
+    if (metaThemeColor) metaThemeColor.setAttribute('content', '#0f0f14');
+  }
+}
+
 // ─── UTILITIES ──────────────────────────────────────────────────
 function todayStr() {
   const d = new Date();
@@ -301,7 +332,7 @@ function renderHabits() {
 function buildHabitCard(habit) {
   const card = document.createElement('div');
   card.className = 'habit-card';
-  card.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+  card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
   card.dataset.id = habit.id;
 
   const done = isHabitDone(habit, selectedDate);
@@ -361,7 +392,7 @@ function buildHabitCard(habit) {
     const btn = document.createElement('button');
     btn.className = 'circle-action-btn' + (done ? ' done' : '');
     btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
-    btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+    btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
     } else {
@@ -379,7 +410,7 @@ function buildHabitCard(habit) {
     else if (val.toString().length > 2) fSize = '0.9rem';
 
     btn.innerHTML = `<span style="font-size: ${fSize}">${val}</span>`;
-    btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+    btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
     } else {
@@ -392,7 +423,7 @@ function buildHabitCard(habit) {
     const btn = document.createElement('button');
     btn.className = 'circle-action-btn' + (done ? ' done' : '');
     btn.innerHTML = `<span style="font-size: 0.8rem">${fmtTime(elapsed)}</span>`;
-    btn.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+    btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
     } else {
@@ -830,7 +861,7 @@ function renderStatsDashboard() {
   habits.forEach(habit => {
     const card = document.createElement('div');
     card.className = 'dashboard-card';
-    card.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+    card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     
     const hdr = document.createElement('div');
     hdr.className = 'dash-card-header';
@@ -909,7 +940,7 @@ function renderStats(habitId) {
   if (!habit) return;
   const content = document.getElementById('stats-content');
   content.innerHTML = '';
-  content.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+  content.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
   // Compute stats
   const today = new Date();
@@ -969,7 +1000,7 @@ function renderStats(habitId) {
 
   const calGrid = document.createElement('div');
   calGrid.className = 'cal-grid';
-  calGrid.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+  calGrid.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
   // Day labels
   ['L','M','M','G','V','S','D'].forEach(d => {
@@ -1005,7 +1036,7 @@ function renderStats(habitId) {
 
   const barChart = document.createElement('div');
   barChart.className = 'bar-chart';
-  barChart.style.setProperty('--habit-color', habit.color || '#c8b8ff');
+  barChart.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
   const weeks = [];
   for (let w = 7; w >= 0; w--) {
