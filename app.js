@@ -333,10 +333,10 @@ function buildHabitCard(habit) {
 
   const leds = document.createElement('div');
   leds.className = 'habit-leds';
-  const selD = new Date(selectedDate + 'T12:00:00');
+  const todayD = new Date(todayStr() + 'T12:00:00');
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(selD);
-    d.setDate(selD.getDate() - i);
+    const d = new Date(todayD);
+    d.setDate(todayD.getDate() - i);
     const ds = dateStr(d);
     const dot = document.createElement('div');
     dot.className = 'led-dot';
