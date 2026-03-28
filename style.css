@@ -230,10 +230,11 @@ input::placeholder { color: var(--text3); }
   flex-shrink: 0;
 }
 .header-left { display: flex; align-items: center; gap: 10px; }
-.logo-mark-sm {
-  font-size: 1.1rem;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.app-icon-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 .greeting { font-size: 0.75rem; color: var(--text2); font-weight: 400; }
 .user-name { font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
@@ -277,6 +278,9 @@ input::placeholder { color: var(--text3); }
 .date-pill.active {
   background: var(--accent-dim);
   border-color: var(--accent);
+}
+.date-pill.future-day {
+  opacity: 0.35;
 }
 .date-pill .pill-day { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); font-weight: 600; }
 .date-pill .pill-num { font-size: 1.1rem; font-weight: 600; line-height: 1; }

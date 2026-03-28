@@ -280,7 +280,10 @@ function buildDateStrip() {
     const d = new Date(year, 0, i);
     const ds = dateStr(d);
     const pill = document.createElement('div');
-    pill.className = 'date-pill' + (ds === selectedDate ? ' active' : '');
+    let pillClass = 'date-pill';
+    if (ds === selectedDate) pillClass += ' active';
+    if (ds > todayStr()) pillClass += ' future-day';
+    pill.className = pillClass;
     pill.dataset.date = ds;
     const hasLog = habits.some(h => isHabitLoggedOnDay(h, ds));
     if (hasLog) pill.classList.add('has-logs');
