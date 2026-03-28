@@ -470,7 +470,21 @@ function updateProgress() {
   const pct = total ? Math.round((done / total) * 100) : 0;
   document.getElementById('progress-label').textContent = `${done} / ${total} completate oggi`;
   document.getElementById('progress-pct').textContent = `${pct}%`;
-  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // Segmented bar
+  const track = document.getElementById('progress-track');
+  track.innerHTML = '';
+  if (total === 0) {
+    const seg = document.createElement('div');
+    seg.className = 'progress-segment';
+    track.appendChild(seg);
+  } else {
+    todayHabits.forEach(h => {
+      const seg = document.createElement('div');
+      seg.className = 'progress-segment' + (isHabitDone(h, selectedDate) ? ' done' : '');
+      track.appendChild(seg);
+    });
+  }
 }
 
 // ─── TOGGLE BOOLEAN ─────────────────────────────────────────────
