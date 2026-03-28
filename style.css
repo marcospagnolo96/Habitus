@@ -305,6 +305,7 @@ input::placeholder { color: var(--text3); }
   display: flex; gap: 4px;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: center;
 }
 .progress-segment {
   width: 8px; height: 8px;
