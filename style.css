@@ -108,11 +108,10 @@ body {
   text-align: center;
   padding: 48px 24px 32px;
 }
-.logo-mark {
-  font-size: 2rem;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  display: block; margin-bottom: 8px;
+.auth-logo-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: block; margin: 0 auto 12px;
 }
 .auth-logo h1 {
   font-family: var(--font-display);
