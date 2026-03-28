@@ -467,23 +467,15 @@ function updateProgress() {
   const todayHabits = habits.filter(h => habitScheduledFor(h, selectedDate));
   const done = todayHabits.filter(h => isHabitDone(h, selectedDate)).length;
   const total = todayHabits.length;
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  document.getElementById('progress-label').textContent = `${done} / ${total} completate oggi`;
-  document.getElementById('progress-pct').textContent = `${pct}%`;
 
-  // Segmented bar
+  // Segmented bar: fill from left by count
   const track = document.getElementById('progress-track');
   track.innerHTML = '';
-  if (total === 0) {
+  const count = total || 1;
+  for (let i = 0; i < count; i++) {
     const seg = document.createElement('div');
-    seg.className = 'progress-segment';
+    seg.className = 'progress-segment' + (i < done ? ' done' : '');
     track.appendChild(seg);
-  } else {
-    todayHabits.forEach(h => {
-      const seg = document.createElement('div');
-      seg.className = 'progress-segment' + (isHabitDone(h, selectedDate) ? ' done' : '');
-      track.appendChild(seg);
-    });
   }
 }
 
