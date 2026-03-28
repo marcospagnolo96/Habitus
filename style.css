@@ -313,7 +313,7 @@ input::placeholder { color: var(--text3); }
 /* ─── HABITS CONTAINER ───────────────────────────────────────── */
 .habits-container {
   flex: 1; overflow-y: auto;
-  padding: 8px 16px calc(var(--nav-h) + 16px + var(--safe-bottom));
+  padding: 8px 8px calc(var(--nav-h) + 16px + var(--safe-bottom));
   scrollbar-width: none;
 }
 .habits-container::-webkit-scrollbar { display: none; }
