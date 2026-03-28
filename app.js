@@ -381,7 +381,6 @@ function buildHabitCard(habit) {
 
   info.appendChild(name);
   info.appendChild(meta);
-  info.appendChild(leds);
 
   // Action
   const action = document.createElement('div');
@@ -434,6 +433,7 @@ function buildHabitCard(habit) {
 
   card.appendChild(emojiEl);
   card.appendChild(info);
+  card.appendChild(leds);
   card.appendChild(action);
 
   // Long press → edit
