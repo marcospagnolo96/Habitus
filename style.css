@@ -428,26 +428,21 @@ input::placeholder { color: var(--text3); }
   letter-spacing: 0.04em;
   flex: 1;
 }
-.nav-fab-wrapper {
-  position: relative;
-  width: 60px; height: 60px;
-  display: flex; align-items: center; justify-content: center;
-  top: -20px;
-}
 .nav-fab {
-  width: 56px; height: 56px;
-  border-radius: 50%;
+  width: 46px; height: 46px;
+  border-radius: 14px;
   background: var(--accent-gradient);
   color: #fff;
   border: none;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px var(--accent-gradient-shadow);
+  box-shadow: 0 2px 10px var(--accent-gradient-shadow);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
 }
 .nav-fab:active {
   transform: scale(0.92);
-  box-shadow: 0 2px 6px var(--accent-gradient-shadow);
+  box-shadow: 0 1px 5px var(--accent-gradient-shadow);
 }
 .nav-btn.active { color: var(--accent); }
 .nav-btn svg { transition: stroke 0.2s; }
