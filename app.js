@@ -905,25 +905,32 @@ function renderStatsDashboard() {
     
     const hm = document.createElement('div');
     hm.className = 'dash-heatmap';
-    
+
     const today = new Date();
     const currYear = today.getFullYear();
     const currMonth = today.getMonth();
     const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
-    
+
+    // Monday-aligned offset: Mon=0 ... Sun=6
+    const firstDay = new Date(currYear, currMonth, 1);
+    const offset = (firstDay.getDay() + 6) % 7; // 0=Mon
+    for (let p = 0; p < offset; p++) {
+      const spacer = document.createElement('div');
+      spacer.className = 'dash-rect empty';
+      hm.appendChild(spacer);
+    }
+
     for (let i = 1; i <= daysInMonth; i++) {
-       const d = new Date(currYear, currMonth, i);
-       const ds = dateStr(d);
-       const rect = document.createElement('div');
-       rect.className = 'dash-rect';
-       if (!habitScheduledFor(habit, ds)) {
-          rect.classList.add('skip');
-       } else if (isHabitLoggedOnDay(habit, ds)) {
-          rect.classList.add('on');
-       } else if (ds > todayStr()) {
-          rect.classList.add('future');
-       }
-       hm.appendChild(rect);
+      const d = new Date(currYear, currMonth, i);
+      const ds = dateStr(d);
+      const rect = document.createElement('div');
+      rect.className = 'dash-rect';
+      if (isHabitLoggedOnDay(habit, ds)) {
+        rect.classList.add('on');
+      } else if (ds > todayStr()) {
+        rect.classList.add('future');
+      }
+      hm.appendChild(rect);
     }
     
     card.appendChild(hdr);
