@@ -282,12 +282,11 @@ function buildDateStrip() {
     const pill = document.createElement('div');
     pill.className = 'date-pill' + (ds === selectedDate ? ' active' : '');
     pill.dataset.date = ds;
-    const hasLog = Object.keys(logs[ds] || {}).length > 0;
+    const hasLog = habits.some(h => isHabitLoggedOnDay(h, ds));
     if (hasLog) pill.classList.add('has-logs');
     pill.innerHTML = `
       <span class="pill-day">${days[d.getDay()]}</span>
-      <span class="pill-num">${d.getDate()}</span>
-      <span class="pill-dot"></span>`;
+      <span class="pill-num">${d.getDate()}</span>`;
     pill.addEventListener('click', () => {
       selectedDate = ds;
       buildDateStrip();
