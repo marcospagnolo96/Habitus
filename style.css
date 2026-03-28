@@ -109,8 +109,8 @@ body {
   padding: 48px 24px 32px;
 }
 .auth-logo-icon {
-  width: 32px; height: 32px;
-  border-radius: 8px;
+  width: 64px; height: 64px;
+  border-radius: 16px;
   display: block; margin: 0 auto 12px;
 }
 .auth-logo h1 {
