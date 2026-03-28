@@ -106,8 +106,36 @@ function habitScheduledFor(habit, dateString) {
   switch (habit.freq) {
     case 'daily': return true;
     case 'days':  return (habit.freqDays || []).map(Number).includes(dow);
-    case 'weekly':
-    case 'monthly': return true; // always visible, goal-based
+    case 'weekly': {
+      if (!habit.freqN) return true;
+      // Count completions strictly BEFORE dateString in the same week
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+      const weekStart = new Date(d); weekStart.setDate(diff);
+      let countBefore = 0;
+      for (let i = 0; i < 7; i++) {
+        const cur = new Date(weekStart); cur.setDate(weekStart.getDate() + i);
+        const ds = dateStr(cur);
+        if (ds >= dateString) break;
+        if (isHabitLoggedOnDay(habit, ds)) countBefore++;
+      }
+      return countBefore < habit.freqN;
+    }
+    case 'monthly': {
+      if (!habit.freqN) return true;
+      // Count completions strictly BEFORE dateString in the same month
+      const [y, m] = dateString.split('-');
+      const year = parseInt(y); const month = parseInt(m) - 1;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      let countBefore = 0;
+      for (let i = 1; i <= daysInMonth; i++) {
+        const cur = new Date(year, month, i);
+        const ds = dateStr(cur);
+        if (ds >= dateString) break;
+        if (isHabitLoggedOnDay(habit, ds)) countBefore++;
+      }
+      return countBefore < habit.freqN;
+    }
     default: return true;
   }
 }
