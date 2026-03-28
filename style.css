@@ -583,48 +583,160 @@ input::placeholder { color: var(--text3); }
   font-weight: 600; margin-bottom: 12px;
 }
 
-/* Calendar heatmap */
-.cal-grid {
+/* ─── INTERACTIVE CALENDAR ─────────────────────────────────────── */
+.stats-cal-section {
+  margin-bottom: 24px;
+}
+
+.ical-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ical-title {
+  font-family: var(--font-body);
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+}
+.ical-nav-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.ical-nav-btn:disabled { opacity: 0.25; cursor: default; }
+.ical-nav-btn:not(:disabled):active { background: var(--bg); }
+
+.ical-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  margin-bottom: 20px;
+  gap: 4px;
 }
-.cal-day-label {
-  font-size: 0.62rem; color: var(--text3);
-  text-align: center; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em;
+.ical-day-label {
+  font-size: 0.6rem; color: var(--text3);
+  text-align: center; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 0 4px;
 }
-.cal-cell {
+.ical-cell {
   aspect-ratio: 1;
-  border-radius: 5px;
+  border-radius: 7px;
   background: var(--bg3);
+  border: 1px solid transparent;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   position: relative;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.62rem; color: var(--text3);
+  gap: 1px;
+  transition: all 0.15s;
 }
-.cal-cell.done { background: var(--habit-color, var(--accent)); opacity: 0.85; }
-.cal-cell.partial { opacity: 0.4; }
-.cal-cell.today { outline: 1.5px solid var(--accent); outline-offset: -1px; }
-.cal-cell.empty { background: transparent; }
-
-/* Bar chart */
-.bar-chart {
-  display: flex; align-items: flex-end; gap: 6px;
-  height: 90px; margin-bottom: 20px;
+.ical-cell.empty { background: transparent; border-color: transparent; }
+.ical-cell.ical-unscheduled { opacity: 0.2; }
+.ical-cell.ical-future { opacity: 0.35; }
+.ical-cell.ical-today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
 }
-.bar-wrap {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; gap: 4px; height: 100%;
-}
-.bar {
-  width: 100%; border-radius: 5px 5px 0 0;
+.ical-cell.ical-done {
   background: var(--habit-color, var(--accent));
-  opacity: 0.7;
-  min-height: 3px;
-  transition: height 0.5s cubic-bezier(.16,1,.3,1);
+  border-color: var(--habit-color, var(--accent));
 }
-.bar-lbl { font-size: 0.6rem; color: var(--text3); }
+.ical-cell.ical-done .ical-num { color: #fff; }
+.ical-cell.ical-clickable { cursor: pointer; }
+.ical-cell.ical-clickable:not(.ical-done):hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.ical-cell.ical-clickable.ical-done:hover {
+  opacity: 0.7;
+}
+.ical-num {
+  font-size: 0.68rem; font-weight: 600;
+  color: var(--text2); line-height: 1;
+}
+.ical-today .ical-num { color: var(--accent); }
+.ical-check {
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  line-height: 1;
+}
+
+/* ─── REPS CHART ────────────────────────────────────────────────── */
+.stats-chart-section {
+  margin-bottom: 24px;
+}
+
+.chart-period-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.chart-period-btns {
+  display: flex; gap: 4px;
+  background: var(--bg3);
+  border-radius: 9px;
+  padding: 3px;
+}
+.chart-period-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; transition: all 0.18s;
+}
+.chart-period-btn.active {
+  background: var(--bg2);
+  color: var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+
+.reps-chart-wrap {
+  display: flex; align-items: flex-end;
+  gap: 5px;
+  height: 130px;
+}
+.reps-bar-col {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.reps-bar-track {
+  width: 100%;
+  display: flex; align-items: flex-end;
+  flex: 1;
+}
+.reps-bar-fill {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  background: var(--habit-color, var(--accent));
+  opacity: 0.75;
+  min-height: 0;
+  transition: height 0.5s cubic-bezier(.16,1,.3,1);
+  align-self: flex-end;
+}
+.reps-bar-fill.today {
+  opacity: 1;
+  box-shadow: 0 -2px 8px var(--accent-gradient-shadow);
+}
+.reps-bar-fill.unscheduled { opacity: 0.15; }
+.reps-bar-val {
+  font-size: 0.58rem; font-weight: 700;
+  color: var(--text3); line-height: 1;
+  min-height: 10px; text-align: center;
+}
+.reps-bar-lbl {
+  font-size: 0.6rem; color: var(--text3);
+  font-weight: 500; text-align: center; line-height: 1;
+}
+.reps-bar-lbl.today { color: var(--accent); font-weight: 700; }
 
 /* ─── MODAL ──────────────────────────────────────────────────── */
 .modal {

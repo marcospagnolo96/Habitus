@@ -862,6 +862,50 @@ function computeStreak(habit) {
   return streak;
 }
 
+function computeBestStreak(habit) {
+  // Collect all dates from logs that are scheduled and logged
+  const today = new Date();
+  let bestStreak = 0;
+  
+  if (habit.freq === 'weekly' && habit.freqN) {
+    // Check weekly streaks over 2 years
+    let maxW = 0, curW = 0;
+    for (let w = 104; w >= 0; w--) {
+      const refDay = new Date(today);
+      refDay.setDate(today.getDate() - w * 7);
+      const day = refDay.getDay();
+      const diff = refDay.getDate() - day + (day === 0 ? -6 : 1);
+      refDay.setDate(diff);
+      const ds = dateStr(refDay);
+      if (checkWeeklyGoalMet(habit, ds)) { curW++; if (curW > maxW) maxW = curW; }
+      else curW = 0;
+    }
+    return maxW;
+  } else if (habit.freq === 'monthly' && habit.freqN) {
+    let maxM = 0, curM = 0;
+    let y = today.getFullYear(), m = today.getMonth();
+    for (let i = 24; i >= 0; i--) {
+      let ty = y, tm = m - (24 - i);
+      while (tm < 0) { tm += 12; ty--; }
+      const ds = `${ty}-${String(tm+1).padStart(2,'0')}-01`;
+      if (checkMonthlyGoalMet(habit, ds)) { curM++; if (curM > maxM) maxM = curM; }
+      else curM = 0;
+    }
+    return maxM;
+  } else {
+    let maxS = 0, curS = 0;
+    for (let i = 730; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const ds = dateStr(d);
+      if (!habitScheduledFor(habit, ds)) continue;
+      if (isHabitLoggedOnDay(habit, ds)) { curS++; if (curS > maxS) maxS = curS; }
+      else curS = 0;
+    }
+    return maxS;
+  }
+}
+
 // ─── BOTTOM NAV ───────────────────────────────────────────────────
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -985,16 +1029,15 @@ function renderStats(habitId) {
   content.innerHTML = '';
   content.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
-  // Compute stats
+  // ── Compute overall stats ────────────────────────────────────────
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
-  const last30 = [];
 
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const ds = dateStr(d);
-    if (!habitScheduledFor(habit, ds)) { last30.push(null); continue; }
+    if (!habitScheduledFor(habit, ds)) continue;
     totalDays++;
     const entry = (logs[ds] || {})[habit.id];
     const done = isHabitLoggedOnDay(habit, ds);
@@ -1004,13 +1047,13 @@ function renderStats(habitId) {
         totalValue += Number(entry); valueCount++;
       }
     }
-    last30.push({ ds, done, val: entry });
   }
 
   const streak = computeStreak(habit);
+  const bestStreak = computeBestStreak(habit);
   const pct = totalDays ? Math.round((doneDays / totalDays) * 100) : 0;
 
-  // Stat cards
+  // ── Stat cards ──────────────────────────────────────────────────
   const grid = document.createElement('div');
   grid.className = 'stat-grid';
 
@@ -1022,12 +1065,13 @@ function renderStats(habitId) {
   };
 
   grid.appendChild(makeCard(`🔥 ${streak}`, 'Streak attuale', true));
-  grid.appendChild(makeCard(`${pct}%`, 'Completamento 30gg', true));
-  grid.appendChild(makeCard(doneDays, 'Volte completata'));
+  grid.appendChild(makeCard(`⚡ ${bestStreak}`, 'Miglior streak', true));
+  grid.appendChild(makeCard(`${pct}%`, 'Completamento 30gg'));
+  grid.appendChild(makeCard(doneDays, 'Completamenti'));
   if (habit.type === 'number' && valueCount > 0) {
     const avg = (totalValue / valueCount).toFixed(1);
-    grid.appendChild(makeCard(`${avg} ${habit.unit || ''}`, 'Media per sessione'));
-    grid.appendChild(makeCard(`${totalValue} ${habit.unit || ''}`, 'Totale accumulato'));
+    grid.appendChild(makeCard(`${avg} ${habit.unit || ''}`, 'Media sessione'));
+    grid.appendChild(makeCard(`${totalValue} ${habit.unit || ''}`, 'Totale'));
   } else if (habit.type === 'timer' && valueCount > 0) {
     grid.appendChild(makeCard(fmtTime(Math.round(totalValue / valueCount)), 'Durata media'));
     grid.appendChild(makeCard(fmtTime(totalValue), 'Tempo totale'));
@@ -1035,82 +1079,258 @@ function renderStats(habitId) {
 
   content.appendChild(grid);
 
-  // Calendar heatmap (last 30 days)
-  const calTitle = document.createElement('div');
-  calTitle.className = 'section-title';
-  calTitle.textContent = 'Ultimi 30 giorni';
-  content.appendChild(calTitle);
+  // ── Interactive Monthly Calendar ─────────────────────────────────
+  const calWrap = document.createElement('div');
+  calWrap.className = 'stats-cal-section';
+  renderInteractiveCalendar(calWrap, habit);
+  content.appendChild(calWrap);
 
-  const calGrid = document.createElement('div');
-  calGrid.className = 'cal-grid';
-  calGrid.style.setProperty('--habit-color', habit.color || 'var(--accent)');
+  // ── Reps chart with period selector ──────────────────────────────
+  const chartSection = document.createElement('div');
+  chartSection.className = 'stats-chart-section';
+  renderRepsChart(chartSection, habit, 'week');
+  content.appendChild(chartSection);
+}
 
-  // Day labels
+// ── INTERACTIVE CALENDAR ─────────────────────────────────────────────
+function renderInteractiveCalendar(container, habit, year, month) {
+  container.innerHTML = '';
+
+  const today = new Date();
+  const cy = year  ?? today.getFullYear();
+  const cm = month ?? today.getMonth();
+
+  const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                      'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'ical-header';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'ical-nav-btn';
+  prevBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`;
+  prevBtn.addEventListener('click', () => {
+    let nm = cm - 1, ny = cy;
+    if (nm < 0) { nm = 11; ny--; }
+    renderInteractiveCalendar(container, habit, ny, nm);
+  });
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'ical-nav-btn';
+  nextBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
+  const isCurrentMonth = (cy === today.getFullYear() && cm === today.getMonth());
+  if (isCurrentMonth) nextBtn.disabled = true;
+  nextBtn.addEventListener('click', () => {
+    let nm = cm + 1, ny = cy;
+    if (nm > 11) { nm = 0; ny++; }
+    renderInteractiveCalendar(container, habit, ny, nm);
+  });
+
+  const title = document.createElement('span');
+  title.className = 'ical-title';
+  title.textContent = `${monthNames[cm]} ${cy}`;
+
+  header.appendChild(prevBtn);
+  header.appendChild(title);
+  header.appendChild(nextBtn);
+  container.appendChild(header);
+
+  // Grid
+  const grid = document.createElement('div');
+  grid.className = 'ical-grid';
+
   ['L','M','M','G','V','S','D'].forEach(d => {
     const lbl = document.createElement('div');
-    lbl.className = 'cal-day-label'; lbl.textContent = d;
-    calGrid.appendChild(lbl);
+    lbl.className = 'ical-day-label';
+    lbl.textContent = d;
+    grid.appendChild(lbl);
   });
 
-  // Find first Monday before 30 days ago
-  const firstD = new Date(today); firstD.setDate(today.getDate() - 29);
-  const dow = firstD.getDay(); // 0=Sun
-  const offset = (dow === 0) ? 6 : dow - 1; // offset to previous Monday
-  for (let i = 0; i < offset; i++) {
-    const empty = document.createElement('div');
-    empty.className = 'cal-cell empty';
-    calGrid.appendChild(empty);
+  const firstDay = new Date(cy, cm, 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+  for (let p = 0; p < offset; p++) {
+    const sp = document.createElement('div');
+    sp.className = 'ical-cell empty';
+    grid.appendChild(sp);
   }
 
-  last30.forEach(item => {
+  const daysInMonth = new Date(cy, cm + 1, 0).getDate();
+  const todayDs = todayStr();
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    const ds = `${cy}-${String(cm+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
     const cell = document.createElement('div');
-    if (item === null) { cell.className = 'cal-cell'; calGrid.appendChild(cell); return; }
-    cell.className = 'cal-cell' + (item.done ? ' done' : '') + (item.ds === todayStr() ? ' today' : '');
-    calGrid.appendChild(cell);
-  });
+    const scheduled = habitScheduledFor(habit, ds);
+    const done = scheduled && isHabitLoggedOnDay(habit, ds);
+    const future = ds > todayDs;
 
-  content.appendChild(calGrid);
+    cell.className = 'ical-cell' +
+      (!scheduled ? ' ical-unscheduled' : '') +
+      (done ? ' ical-done' : '') +
+      (ds === todayDs ? ' ical-today' : '') +
+      (future ? ' ical-future' : '');
 
-  // Weekly bar chart (last 8 weeks)
-  const barTitle = document.createElement('div');
-  barTitle.className = 'section-title';
-  barTitle.textContent = 'Completamento settimanale';
-  content.appendChild(barTitle);
+    const numEl = document.createElement('span');
+    numEl.className = 'ical-num';
+    numEl.textContent = i;
+    cell.appendChild(numEl);
 
-  const barChart = document.createElement('div');
-  barChart.className = 'bar-chart';
-  barChart.style.setProperty('--habit-color', habit.color || 'var(--accent)');
-
-  const weeks = [];
-  for (let w = 7; w >= 0; w--) {
-    let wDone = 0, wTotal = 0;
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(today);
-      day.setDate(today.getDate() - w * 7 - d);
-      const ds = dateStr(day);
-      if (!habitScheduledFor(habit, ds)) continue;
-      wTotal++;
-      if (isHabitDone(habit, ds)) wDone++;
+    if (done) {
+      const check = document.createElement('span');
+      check.className = 'ical-check';
+      check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+      cell.appendChild(check);
     }
-    weeks.push({ pct: wTotal ? wDone / wTotal : 0, label: `S-${w}` });
-  }
-  weeks[weeks.length - 1].label = 'Oggi';
 
-  const maxPct = Math.max(...weeks.map(w => w.pct), 0.01);
-  weeks.forEach(w => {
-    const wrap = document.createElement('div');
-    wrap.className = 'bar-wrap';
-    const bar = document.createElement('div');
-    bar.className = 'bar';
-    bar.style.height = `${(w.pct / maxPct) * 80}px`;
-    const lbl = document.createElement('div');
-    lbl.className = 'bar-lbl';
-    lbl.textContent = w.label === 'Oggi' ? '·' : '';
-    wrap.appendChild(bar); wrap.appendChild(lbl);
-    barChart.appendChild(wrap);
+    // Allow toggle only for scheduled, non-future, boolean habits
+    if (scheduled && !future && habit.type === 'boolean') {
+      cell.classList.add('ical-clickable');
+      cell.addEventListener('click', async () => {
+        const prev = selectedDate;
+        selectedDate = ds;
+        await toggleBoolean(habit);
+        selectedDate = prev;
+        // Re-render this calendar and chip
+        renderInteractiveCalendar(container, habit, cy, cm);
+        renderHabits();
+        buildDateStrip();
+      });
+    } else if (scheduled && !future && (habit.type === 'number' || habit.type === 'timer')) {
+      cell.classList.add('ical-clickable');
+      cell.addEventListener('click', () => {
+        const prev = selectedDate;
+        selectedDate = ds;
+        openLogModal(habit);
+        // After modal closes the calendar will not auto-refresh;
+        // user can navigate back
+        selectedDate = prev;
+      });
+    }
+
+    grid.appendChild(cell);
+  }
+
+  container.appendChild(grid);
+}
+
+// ── REPS CHART ───────────────────────────────────────────────────────
+function renderRepsChart(container, habit, period) {
+  container.innerHTML = '';
+
+  // Period selector
+  const selRow = document.createElement('div');
+  selRow.className = 'chart-period-row';
+
+  const sectionLbl = document.createElement('div');
+  sectionLbl.className = 'section-title';
+  sectionLbl.textContent = 'Ripetizioni';
+
+  const periods = [{ key: 'week', label: 'Sett.' }, { key: 'month', label: 'Mese' }, { key: 'year', label: 'Anno' }];
+  const btnRow = document.createElement('div');
+  btnRow.className = 'chart-period-btns';
+  periods.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'chart-period-btn' + (p.key === period ? ' active' : '');
+    btn.textContent = p.label;
+    btn.addEventListener('click', () => renderRepsChart(container, habit, p.key));
+    btnRow.appendChild(btn);
   });
 
-  content.appendChild(barChart);
+  selRow.appendChild(sectionLbl);
+  selRow.appendChild(btnRow);
+  container.appendChild(selRow);
+
+  // Build data based on period
+  const today = new Date();
+  let bars = [];
+
+  if (period === 'week') {
+    // Last 7 days individually
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const ds = dateStr(d);
+      const dayNames = ['Do','Lu','Ma','Me','Gi','Ve','Sa'];
+      const scheduled = habitScheduledFor(habit, ds);
+      let val = 0;
+      if (scheduled) {
+        const entry = (logs[ds] || {})[habit.id];
+        if (habit.type === 'boolean') val = isHabitLoggedOnDay(habit, ds) ? 1 : 0;
+        else val = Number(entry || 0);
+      }
+      bars.push({ val, label: dayNames[d.getDay()], isToday: ds === todayStr(), scheduled });
+    }
+  } else if (period === 'month') {
+    // Last 4 weeks
+    for (let w = 3; w >= 0; w--) {
+      let wVal = 0;
+      for (let d = 6; d >= 0; d--) {
+        const day = new Date(today);
+        day.setDate(today.getDate() - w * 7 - d);
+        const ds = dateStr(day);
+        const entry = (logs[ds] || {})[habit.id];
+        if (habit.type === 'boolean') wVal += isHabitLoggedOnDay(habit, ds) ? 1 : 0;
+        else wVal += Number(entry || 0);
+      }
+      bars.push({ val: wVal, label: `S${4-w}`, scheduled: true });
+    }
+  } else {
+    // Year: last 12 months
+    for (let i = 11; i >= 0; i--) {
+      let y = today.getFullYear(), m = today.getMonth() - i;
+      while (m < 0) { m += 12; y--; }
+      const daysInM = new Date(y, m + 1, 0).getDate();
+      let mVal = 0;
+      for (let d = 1; d <= daysInM; d++) {
+        const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const entry = (logs[ds] || {})[habit.id];
+        if (habit.type === 'boolean') mVal += isHabitLoggedOnDay(habit, ds) ? 1 : 0;
+        else mVal += Number(entry || 0);
+      }
+      const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+      bars.push({ val: mVal, label: mNames[m], scheduled: true });
+    }
+  }
+
+  // Chart wrapper with canvas-like SVG
+  const chartWrap = document.createElement('div');
+  chartWrap.className = 'reps-chart-wrap';
+
+  const maxVal = Math.max(...bars.map(b => b.val), 1);
+  const CHART_H = 90;
+
+  bars.forEach(b => {
+    const col = document.createElement('div');
+    col.className = 'reps-bar-col';
+
+    const track = document.createElement('div');
+    track.className = 'reps-bar-track';
+
+    const fill = document.createElement('div');
+    fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (!b.scheduled ? ' unscheduled' : '');
+    const fillH = b.val > 0 ? Math.max(Math.round((b.val / maxVal) * CHART_H), 4) : 0;
+    fill.style.height = fillH + 'px';
+    if (b.val > 0 && habit.type !== 'boolean') {
+      fill.title = String(b.val);
+    }
+    track.appendChild(fill);
+
+    const valLbl = document.createElement('div');
+    valLbl.className = 'reps-bar-val';
+    if (b.val > 0) valLbl.textContent = habit.type === 'boolean' ? b.val : (b.val > 999 ? Math.round(b.val/1000)+'k' : b.val);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
+    lbl.textContent = b.label;
+
+    col.appendChild(valLbl);
+    col.appendChild(track);
+    col.appendChild(lbl);
+    chartWrap.appendChild(col);
+  });
+
+  container.appendChild(chartWrap);
 }
 
 // ─── PWA SERVICE WORKER ──────────────────────────────────────────
