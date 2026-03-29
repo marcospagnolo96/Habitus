@@ -479,6 +479,7 @@ function buildHabitCard(habit) {
     meta.innerHTML += `<span class="habit-streak">🔥 ${streak}${sUnit}</span>`;
   }
 
+  // LED progress last 7 days
   const leds = document.createElement('div');
   leds.className = 'habit-leds';
   const todayD = new Date(todayStr() + 'T12:00:00');
@@ -495,6 +496,7 @@ function buildHabitCard(habit) {
 
   info.appendChild(name);
   info.appendChild(meta);
+  info.appendChild(leds);
 
   // Action
   const action = document.createElement('div');
@@ -632,10 +634,23 @@ async function saveLog(habitId, valueOrUpdate) {
     }
   }
 
-  // Aggiornamento locale immediato per UI ultra-reattiva
+  // Aggiornamento locale immediato per UI ultra-reattiva (OTTIMISTICO)
   logs[selectedDate][habitId] = newEntry;
-  // Non chiamiamo renderHabits() qui perché onSnapshot lo farà, 
-  // ma il feedback visuale del pulsante è già avvenuto in toggleBoolean/openLogModal
+  
+  try {
+    renderHabits();
+    updateProgress();
+    renderDashboard(); 
+    renderStatsDashboard(); 
+    
+    // Aggiorna anche le stats se aperte
+    if (statsHabitId) {
+      const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
+      if (detailVisible) renderStats(statsHabitId);
+    }
+  } catch (e) {
+    console.warn("Errore durante refresh ottimistico:", e);
+  }
   
   await setDoc(logRef, { [habitId]: newEntry }, { merge: true });
 }
