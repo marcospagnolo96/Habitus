@@ -599,27 +599,29 @@ function updateProgress() {
   }
 }
 
-async function toggleBoolean(habit) {
-  const dayLogs = logs[selectedDate] || {};
+async function toggleBoolean(habit, targetDate = selectedDate) {
+  const dayLogs = logs[targetDate] || {};
   const entry = dayLogs[habit.id];
   const currentVal = (typeof entry === 'object' && entry !== null) ? !!entry.val : !!entry;
   const newVal = !currentVal;
   
-  // Feedback immediato per UI reattiva
-  const btn = document.querySelector(`.habit-card[data-id="${habit.id}"] .circle-action-btn`);
-  if (btn) btn.classList.toggle('done', newVal);
+  // Feedback immediato per UI reattiva se è la data correntemente visualizzata
+  if (targetDate === selectedDate) {
+    const btn = document.querySelector(`.habit-card[data-id="${habit.id}"] .circle-action-btn`);
+    if (btn) btn.classList.toggle('done', newVal);
+  }
 
-  await saveLog(habit.id, newVal);
-  if (newVal) toast(`${habit.emoji} ${habit.name} completata!`);
+  await saveLog(habit.id, newVal, targetDate);
+  if (newVal && targetDate === todayStr()) toast(`${habit.emoji} ${habit.name} completata!`);
 }
 
 // ─── SAVE LOG ────────────────────────────────────────────────────
-async function saveLog(habitId, valueOrUpdate) {
+async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
   if (!currentUser) return;
-  const logRef = doc(db, 'users', currentUser.uid, 'logs', selectedDate);
+  const logRef = doc(db, 'users', currentUser.uid, 'logs', targetDate);
   
-  if (!logs[selectedDate]) logs[selectedDate] = {};
-  const currentEntry = logs[selectedDate][habitId];
+  if (!logs[targetDate]) logs[targetDate] = {};
+  const currentEntry = logs[targetDate][habitId];
 
   let newEntry;
   if (typeof valueOrUpdate === 'object' && valueOrUpdate !== null) {
@@ -635,15 +637,20 @@ async function saveLog(habitId, valueOrUpdate) {
   }
 
   // Aggiornamento locale immediato per UI ultra-reattiva (OTTIMISTICO)
-  logs[selectedDate][habitId] = newEntry;
+  logs[targetDate][habitId] = newEntry;
   
   try {
-    renderHabits();
-    updateProgress();
+    // Se la data modificata è quella visualizzata nella Home, aggiorna la lista
+    if (targetDate === selectedDate) {
+      renderHabits();
+      updateProgress();
+    }
+    
+    // Dashboard e stats generali sempre aggiornate
     renderDashboard(); 
     renderStatsDashboard(); 
     
-    // Aggiorna anche le stats se aperte
+    // Aggiorna anche le stats se aperte (fondamentale per il calendario interattivo)
     if (statsHabitId) {
       const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
       if (detailVisible) renderStats(statsHabitId);
@@ -1358,10 +1365,7 @@ function renderInteractiveCalendar(container, habit, year, month) {
     if (scheduled && !future && habit.type === 'boolean') {
       cell.classList.add('ical-clickable');
       cell.addEventListener('click', async () => {
-        const prev = selectedDate;
-        selectedDate = ds;
-        await toggleBoolean(habit);
-        selectedDate = prev;
+        await toggleBoolean(habit, ds);
         renderInteractiveCalendar(container, habit, cy, cm);
         renderHabits();
         buildDateStrip();
