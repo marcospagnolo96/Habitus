@@ -912,17 +912,58 @@ function computeBestStreak(habit) {
 }
 
 // ─── BOTTOM NAV ───────────────────────────────────────────────────
+function switchTab(tabKey) {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === tabKey);
+  });
+  if (tabKey === 'stats') {
+    openStats();
+  } else if (tabKey === 'today') {
+    document.getElementById('stats-view').classList.add('hidden');
+  }
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    if (btn.dataset.view === 'stats') {
-      openStats();
-    } else if (btn.dataset.view === 'today') {
-      document.getElementById('stats-view').classList.add('hidden');
-    }
+    switchTab(btn.dataset.view);
   });
 });
+
+// ─── SWIPE NAVIGATION ─────────────────────────────────────────────
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  const touchEndX = e.changedTouches[0].screenX;
+  const touchEndY = e.changedTouches[0].screenY;
+  
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+  
+  // Se lo swipe verticale è dominante, lo ignoriamo
+  if (Math.abs(diffY) > Math.abs(diffX)) return;
+  
+  // Ignoriamo lo swipe se avviene dentro aree a scorrimento orizzontale
+  const target = e.target;
+  const ignoreSelectors = ['.date-strip-grid', '.reps-chart-wrap', '.dash-heatmap', '.ical-grid'];
+  if (ignoreSelectors.some(s => target.closest(s))) return;
+
+  const threshold = 70;
+  if (diffX < -threshold) { 
+    // Swipe Sinistra -> Statistiche
+    const isStatsHidden = document.getElementById('stats-view').classList.contains('hidden');
+    if (isStatsHidden) switchTab('stats');
+  } else if (diffX > threshold) {
+    // Swipe Destra -> Oggi
+    const isStatsHidden = document.getElementById('stats-view').classList.contains('hidden');
+    if (!isStatsHidden) switchTab('today');
+  }
+}, { passive: true });
 
 // ─── STATS ───────────────────────────────────────────────────────
 function openStats() {
