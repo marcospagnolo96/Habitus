@@ -184,7 +184,9 @@ input[type="password"], input[type="number"] {
   padding: 13px 16px;
   outline: none;
   transition: border-color 0.2s;
+  border: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 input:focus { border-color: var(--accent); }
 input::placeholder { color: var(--text3); }
@@ -603,6 +605,27 @@ input::placeholder { color: var(--text3); }
   font-weight: 400; color: var(--text); min-width: 60px; text-align: center;
 }
 
+/* ── SMALL YEAR NAV FOR CHART ── */
+.reps-header {
+  display: flex; justify-content: flex-end; margin-bottom: 8px;
+}
+.stats-year-nav-sm {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 4px 8px; border-radius: 8px;
+}
+.yr-btn-sm {
+  background: var(--bg3); border: none; color: var(--text2);
+  width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.yr-btn-sm:active { transform: scale(0.9); }
+.yr-label-sm {
+  font-size: 0.95rem; font-weight: 600; color: var(--text);
+  min-width: 45px; text-align: center;
+}
+
 /* ─── INTERACTIVE CALENDAR ─────────────────────────────────────── */
 .stats-cal-section {
   margin-bottom: 24px;
@@ -692,6 +715,10 @@ input::placeholder { color: var(--text3); }
 .chart-period-row {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 14px;
+}
+.chart-period-row-bottom {
+  display: flex; justify-content: center;
+  margin-top: 16px; margin-bottom: 8px;
 }
 .chart-period-btns {
   display: flex; gap: 4px;

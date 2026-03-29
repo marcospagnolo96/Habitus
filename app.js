@@ -960,9 +960,8 @@ function renderStatsDashboard() {
     const currMonth = today.getMonth();
     const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
 
-    // Monday-aligned offset: Mon=0 ... Sun=6
     const firstDay = new Date(currYear, currMonth, 1);
-    const offset = (firstDay.getDay() + 6) % 7; // 0=Mon
+    const offset = (firstDay.getDay() + 6) % 7;
     for (let p = 0; p < offset; p++) {
       const spacer = document.createElement('div');
       spacer.className = 'dash-rect empty';
@@ -972,14 +971,68 @@ function renderStatsDashboard() {
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(currYear, currMonth, i);
       const ds = dateStr(d);
-      const rect = document.createElementfunction renderStats(habitId) {
+      const rect = document.createElement('div');
+      rect.className = 'dash-rect';
+      if (isHabitLoggedOnDay(habit, ds)) {
+        rect.classList.add('on');
+      } else if (ds > todayStr()) {
+        rect.classList.add('future');
+      }
+      hm.appendChild(rect);
+    }
+    
+    card.appendChild(hdr);
+    card.appendChild(hm);
+    card.addEventListener('click', () => { openHabitDetail(habit.id); });
+    
+    grid.appendChild(card);
+  });
+  
+  dash.appendChild(grid);
+}
+
+function openHabitDetail(habitId) {
+  document.getElementById('stats-dashboard').classList.add('hidden');
+  document.getElementById('stats-detail-view').classList.remove('hidden');
+  document.getElementById('stats-main-title').textContent = 'Dettagli';
+  document.getElementById('stats-back').classList.remove('hidden');
+  
+  statsHabitId = habitId;
+  buildHabitChips();
+  renderStats(habitId);
+}
+
+document.getElementById('stats-back').addEventListener('click', () => {
+  document.getElementById('stats-detail-view').classList.add('hidden');
+  document.getElementById('stats-dashboard').classList.remove('hidden');
+  document.getElementById('stats-main-title').textContent = 'Statistiche';
+  document.getElementById('stats-back').classList.add('hidden');
+});
+
+function buildHabitChips() {
+  const sel = document.getElementById('stats-habit-selector');
+  sel.innerHTML = '';
+  habits.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = 'stats-habit-chip' + (h.id === statsHabitId ? ' active' : '');
+    chip.textContent = `${h.emoji} ${h.name}`;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.stats-habit-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      statsHabitId = h.id;
+      renderStats(h.id);
+    });
+    sel.appendChild(chip);
+  });
+}
+
+function renderStats(habitId) {
   const habit = habits.find(h => h.id === habitId);
   if (!habit) return;
   const content = document.getElementById('stats-content');
   content.innerHTML = '';
   content.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
-  // ── Compute overall stats ────────────────────────────────────────
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
 
@@ -1003,7 +1056,6 @@ function renderStatsDashboard() {
   const bestStreak = computeBestStreak(habit);
   const pct = totalDays ? Math.round((doneDays / totalDays) * 100) : 0;
 
-  // ── Stat cards ──────────────────────────────────────────────────
   const grid = document.createElement('div');
   grid.className = 'stat-grid';
 
@@ -1029,34 +1081,27 @@ function renderStatsDashboard() {
 
   content.appendChild(grid);
 
-  // ── Interactive Monthly Calendar ─────────────────────────────────
   const calWrap = document.createElement('div');
   calWrap.className = 'stats-cal-section';
-  renderInteractiveCalendar(calWrap, habit); // Keep original behavior for calendar
+  renderInteractiveCalendar(calWrap, habit);
   content.appendChild(calWrap);
 
-  // ── Reps chart section ───────────────────────────────────────────
   const chartSection = document.createElement('div');
   chartSection.className = 'stats-chart-section';
   renderRepsChart(chartSection, habit, currentChartPeriod);
   content.appendChild(chartSection);
 }
 
-// ── INTERACTIVE CALENDAR ─────────────────────────────────────────────
 function renderInteractiveCalendar(container, habit, year, month) {
   container.innerHTML = '';
-
   const today = new Date();
   const cy = year  ?? today.getFullYear();
   const cm = month ?? today.getMonth();
-
   const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                       'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
-  // Header
   const header = document.createElement('div');
   header.className = 'ical-header';
-
   const prevBtn = document.createElement('button');
   prevBtn.className = 'ical-nav-btn';
   prevBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`;
@@ -1065,7 +1110,6 @@ function renderInteractiveCalendar(container, habit, year, month) {
     if (nm < 0) { nm = 11; ny--; }
     renderInteractiveCalendar(container, habit, ny, nm);
   });
-
   const nextBtn = document.createElement('button');
   nextBtn.className = 'ical-nav-btn';
   nextBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
@@ -1076,27 +1120,22 @@ function renderInteractiveCalendar(container, habit, year, month) {
     if (nm > 11) { nm = 0; ny++; }
     renderInteractiveCalendar(container, habit, ny, nm);
   });
-
   const title = document.createElement('span');
   title.className = 'ical-title';
   title.textContent = `${monthNames[cm]} ${cy}`;
-
   header.appendChild(prevBtn);
   header.appendChild(title);
   header.appendChild(nextBtn);
   container.appendChild(header);
 
-  // Grid
   const grid = document.createElement('div');
   grid.className = 'ical-grid';
-
   ['L','M','M','G','V','S','D'].forEach(d => {
     const lbl = document.createElement('div');
     lbl.className = 'ical-day-label';
     lbl.textContent = d;
     grid.appendChild(lbl);
   });
-
   const firstDay = new Date(cy, cm, 1);
   const offset = (firstDay.getDay() + 6) % 7;
   for (let p = 0; p < offset; p++) {
@@ -1104,36 +1143,25 @@ function renderInteractiveCalendar(container, habit, year, month) {
     sp.className = 'ical-cell empty';
     grid.appendChild(sp);
   }
-
   const daysInMonth = new Date(cy, cm + 1, 0).getDate();
   const todayDs = todayStr();
-
   for (let i = 1; i <= daysInMonth; i++) {
     const ds = `${cy}-${String(cm+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
     const cell = document.createElement('div');
     const scheduled = habitScheduledFor(habit, ds);
     const done = scheduled && isHabitLoggedOnDay(habit, ds);
     const future = ds > todayDs;
-
-    cell.className = 'ical-cell' +
-      (!scheduled ? ' ical-unscheduled' : '') +
-      (done ? ' ical-done' : '') +
-      (ds === todayDs ? ' ical-today' : '') +
-      (future ? ' ical-future' : '');
-
+    cell.className = 'ical-cell' + (!scheduled ? ' ical-unscheduled' : '') + (done ? ' ical-done' : '') + (ds === todayDs ? ' ical-today' : '') + (future ? ' ical-future' : '');
     const numEl = document.createElement('span');
     numEl.className = 'ical-num';
     numEl.textContent = i;
     cell.appendChild(numEl);
-
     if (done) {
       const check = document.createElement('span');
       check.className = 'ical-check';
       check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
       cell.appendChild(check);
     }
-
-    // Allow toggle only for scheduled, non-future, boolean habits
     if (scheduled && !future && habit.type === 'boolean') {
       cell.classList.add('ical-clickable');
       cell.addEventListener('click', async () => {
@@ -1141,7 +1169,6 @@ function renderInteractiveCalendar(container, habit, year, month) {
         selectedDate = ds;
         await toggleBoolean(habit);
         selectedDate = prev;
-        // Re-render this calendar and chip
         renderInteractiveCalendar(container, habit, cy, cm);
         renderHabits();
         buildDateStrip();
@@ -1152,35 +1179,26 @@ function renderInteractiveCalendar(container, habit, year, month) {
         const prev = selectedDate;
         selectedDate = ds;
         openLogModal(habit);
-        // After modal closes the calendar will not auto-refresh;
-        // user can navigate back
         selectedDate = prev;
       });
     }
-
     grid.appendChild(cell);
   }
-
   container.appendChild(grid);
 }
 
-// ── REPS CHART ───────────────────────────────────────────────────────
 function renderRepsChart(container, habit, period) {
   currentChartPeriod = period;
   container.innerHTML = '';
-
   const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-  // Title Row
   const titleRow = document.createElement('div');
   titleRow.className = 'section-title';
   titleRow.textContent = 'Ripetizioni';
   container.appendChild(titleRow);
 
-  // Year Selection and Chart Header
   const chartHeader = document.createElement('div');
   chartHeader.className = 'reps-header';
-  
   const yrNav = document.createElement('div');
   yrNav.className = 'stats-year-nav-sm';
   yrNav.innerHTML = `
@@ -1189,40 +1207,26 @@ function renderRepsChart(container, habit, period) {
     <button class="yr-btn-sm" id="yr-next-chart"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
   `;
   chartHeader.appendChild(yrNav);
-  
-  // Year selector applies only to chart
-  if (period !== 'year') {
-    container.appendChild(chartHeader);
-    document.getElementById('yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
-    document.getElementById('yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
-  }
+  container.appendChild(chartHeader);
+  document.getElementById('yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
+  document.getElementById('yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
 
-  // Build data based on period
   let bars = [];
   const todayDs = todayStr();
-
   if (period === 'week') {
     let d = new Date(statsViewYear, 0, 1);
     while (d.getDay() !== 1) { d.setDate(d.getDate() - 1); }
-    
     for (let w = 1; w <= 53; w++) {
-      let wVal = 0;
-      let hasToday = false;
-      let inYear = false;
-      let firstDayOfW = null;
+      let wVal = 0; let hasToday = false; let inYear = false; let firstDayOfW = null;
       for (let i = 0; i < 7; i++) {
-        const cur = new Date(d);
-        cur.setDate(d.getDate() + i);
-        if (i === 0) firstDayOfW = new Date(cur); // Start day of the week
+        const cur = new Date(d); cur.setDate(d.getDate() + i);
+        if (i === 0) firstDayOfW = new Date(cur);
         if (cur.getFullYear() === statsViewYear) inYear = true;
         const ds = dateStr(cur);
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) wVal++;
-        } else {
-          wVal += Number(entry || 0);
-        }
+        if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) wVal++; }
+        else { wVal += Number(entry || 0); }
       }
       if (inYear) {
          const lbl = mNames[firstDayOfW.getMonth()].toLowerCase() + ' ' + firstDayOfW.getDate();
@@ -1233,80 +1237,54 @@ function renderRepsChart(container, habit, period) {
     }
   } else if (period === 'month') {
     for (let m = 0; m < 12; m++) {
-      let mVal = 0;
-      const daysInM = new Date(statsViewYear, m + 1, 0).getDate();
-      let hasToday = false;
+      let mVal = 0; const daysInM = new Date(statsViewYear, m + 1, 0).getDate(); let hasToday = false;
       for (let d = 1; d <= daysInM; d++) {
         const ds = `${statsViewYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) mVal++;
-        } else {
-          mVal += Number(entry || 0);
-        }
+        if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) mVal++; }
+        else { mVal += Number(entry || 0); }
       }
       bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
     }
   } else {
-    const startY = 2024; 
-    const endY = new Date().getFullYear();
+    const startY = 2024; const endY = new Date().getFullYear();
     for (let y = startY; y <= Math.max(endY, statsViewYear); y++) {
       let yVal = 0;
       Object.keys(logs).forEach(ds => {
         if (ds.startsWith(String(y))) {
           const entry = logs[ds][habit.id];
-          if (habit.type === 'boolean') {
-            if (isHabitLoggedOnDay(habit, ds)) yVal++;
-          } else {
-            yVal += Number(entry || 0);
-          }
+          if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) yVal++; }
+          else { yVal += Number(entry || 0); }
         }
       });
       bars.push({ val: yVal, label: String(y), isToday: y === new Date().getFullYear(), scheduled: true });
     }
   }
 
-  // Chart area
   const chartWrap = document.createElement('div');
   chartWrap.className = 'reps-chart-wrap';
-
   const maxVal = Math.max(...bars.map(b => b.val), 1);
   const CHART_H = 90;
-
   bars.forEach(b => {
-    const col = document.createElement('div');
-    col.className = 'reps-bar-col';
-
-    const track = document.createElement('div');
-    track.className = 'reps-bar-track';
-
-    const fill = document.createElement('div');
-    fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (!b.scheduled ? ' unscheduled' : '');
+    const col = document.createElement('div'); col.className = 'reps-bar-col';
+    const track = document.createElement('div'); track.className = 'reps-bar-track';
+    const fill = document.createElement('div'); fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (!b.scheduled ? ' unscheduled' : '');
     const fillH = b.val > 0 ? Math.max(Math.round((b.val / maxVal) * CHART_H), 4) : 0;
     fill.style.height = fillH + 'px';
     if (b.val > 0 && habit.type !== 'boolean') { fill.title = String(b.val); }
     track.appendChild(fill);
-
-    const valLbl = document.createElement('div');
-    valLbl.className = 'reps-bar-val';
+    const valLbl = document.createElement('div'); valLbl.className = 'reps-bar-val';
     if (b.val > 0) valLbl.textContent = habit.type === 'boolean' ? b.val : (b.val > 999 ? Math.round(b.val/1000)+'k' : b.val);
-
-    const lbl = document.createElement('div');
-    lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
+    const lbl = document.createElement('div'); lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
     lbl.textContent = b.label;
-
-    col.appendChild(valLbl);
-    col.appendChild(track);
-    col.appendChild(lbl);
+    col.appendChild(valLbl); col.appendChild(track); col.appendChild(lbl);
     chartWrap.appendChild(col);
   });
   container.appendChild(chartWrap);
 
-  // Period Selector moved BELOW the chart
   const selRow = document.createElement('div');
   selRow.className = 'chart-period-row-bottom';
-
   const periods = [{ key: 'week', label: 'Sett.' }, { key: 'month', label: 'Mese' }, { key: 'year', label: 'Anno' }];
   const btnRow = document.createElement('div');
   btnRow.className = 'chart-period-btns';
@@ -1314,120 +1292,11 @@ function renderRepsChart(container, habit, period) {
     const btn = document.createElement('button');
     btn.className = 'chart-period-btn' + (p.key === period ? ' active' : '');
     btn.textContent = p.label;
-    btn.addEventListener('click', () => {
-      currentChartPeriod = p.key;
-      renderRepsChart(container, habit, p.key);
-    });
+    btn.addEventListener('click', () => { currentChartPeriod = p.key; renderRepsChart(container, habit, p.key); });
     btnRow.appendChild(btn);
   });
   selRow.appendChild(btnRow);
   container.appendChild(selRow);
-}
-
-    // All weeks of statsViewYear
-    let d = new Date(statsViewYear, 0, 1);
-    while (d.getDay() !== 1) { d.setDate(d.getDate() - 1); }
-    
-    for (let w = 1; w <= 53; w++) {
-      let wVal = 0;
-      let hasToday = false;
-      let inYear = false;
-      for (let i = 0; i < 7; i++) {
-        const cur = new Date(d);
-        cur.setDate(d.getDate() + i);
-        if (cur.getFullYear() === statsViewYear) inYear = true;
-        const ds = dateStr(cur);
-        if (ds === todayDs) hasToday = true;
-        const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) wVal++;
-        } else {
-          wVal += Number(entry || 0);
-        }
-      }
-      if (inYear) {
-         bars.push({ val: wVal, label: 'S' + w, isToday: hasToday, scheduled: true });
-      }
-      d.setDate(d.getDate() + 7);
-      if (d.getFullYear() > statsViewYear && d.getMonth() === 0 && d.getDate() > 7) break;
-    }
-  } else if (period === 'month') {
-    // All 12 months of statsViewYear
-    const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-    for (let m = 0; m < 12; m++) {
-      let mVal = 0;
-      const daysInM = new Date(statsViewYear, m + 1, 0).getDate();
-      let hasToday = false;
-      for (let d = 1; d <= daysInM; d++) {
-        const ds = `${statsViewYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        if (ds === todayDs) hasToday = true;
-        const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) mVal++;
-        } else {
-          mVal += Number(entry || 0);
-        }
-      }
-      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
-    }
-  } else {
-    // All years from 2024 to current
-    const startY = 2024; 
-    const endY = new Date().getFullYear();
-    for (let y = startY; y <= Math.max(endY, statsViewYear); y++) {
-      let yVal = 0;
-      Object.keys(logs).forEach(ds => {
-        if (ds.startsWith(String(y))) {
-          const entry = logs[ds][habit.id];
-          if (habit.type === 'boolean') {
-            if (isHabitLoggedOnDay(habit, ds)) yVal++;
-          } else {
-            yVal += Number(entry || 0);
-          }
-        }
-      });
-      bars.push({ val: yVal, label: String(y), isToday: y === new Date().getFullYear(), scheduled: true });
-    }
-  }
-
-  // Chart wrapper with canvas-like SVG
-  const chartWrap = document.createElement('div');
-  chartWrap.className = 'reps-chart-wrap';
-
-  const maxVal = Math.max(...bars.map(b => b.val), 1);
-  const CHART_H = 90;
-
-  bars.forEach(b => {
-    const col = document.createElement('div');
-    col.className = 'reps-bar-col';
-
-    const track = document.createElement('div');
-    track.className = 'reps-bar-track';
-
-    const fill = document.createElement('div');
-    fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (!b.scheduled ? ' unscheduled' : '');
-    const fillH = b.val > 0 ? Math.max(Math.round((b.val / maxVal) * CHART_H), 4) : 0;
-    fill.style.height = fillH + 'px';
-    if (b.val > 0 && habit.type !== 'boolean') {
-      fill.title = String(b.val);
-    }
-    track.appendChild(fill);
-
-    const valLbl = document.createElement('div');
-    valLbl.className = 'reps-bar-val';
-    if (b.val > 0) valLbl.textContent = habit.type === 'boolean' ? b.val : (b.val > 999 ? Math.round(b.val/1000)+'k' : b.val);
-
-    const lbl = document.createElement('div');
-    lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
-    lbl.textContent = b.label;
-
-    col.appendChild(valLbl);
-    col.appendChild(track);
-    col.appendChild(lbl);
-    chartWrap.appendChild(col);
-  });
-
-  container.appendChild(chartWrap);
 }
 
 // ─── PWA SERVICE WORKER ──────────────────────────────────────────
