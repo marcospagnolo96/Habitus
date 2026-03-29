@@ -142,21 +142,21 @@ function habitScheduledFor(habit, dateString) {
     default: return true;
   }
 }
+function isHabitLoggedOnDay(habit, ds) {
+  const entry = (logs[ds] || {})[habit.id];
+  if (typeof entry === 'object' && entry !== null) return !!entry.val;
+  return !!entry;
+}
 
-// Base log check for a specific day
-function isHabitLoggedOnDay(habit, dateString) {
-  const entry = (logs[dateString] || {})[habit.id];
-  if (entry === undefined || entry === null) return false;
-
-  // Gestione struttura oggetto { val, skip, note }
+function isHabitDone(habit, ds) {
+  const entry = (logs[ds] || {})[habit.id];
   const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
   const skip = (typeof entry === 'object' && entry !== null) ? entry.skip : false;
-
-  if (skip) return false; // I giorni saltati non contano come completati
+  if (skip) return false;
 
   if (habit.type === 'boolean') return val === true;
-  if (habit.type === 'number')  return Number(val) >= Number(habit.goal || 1);
-  if (habit.type === 'timer')   return Number(val) >= Number(habit.duration || 1) * 60;
+  if (habit.type === 'number') return Number(val || 0) >= (habit.goal || 1);
+  if (habit.type === 'timer') return Number(val || 0) >= (habit.duration || 0) * 60;
   return false;
 }
 
@@ -462,15 +462,16 @@ function buildHabitCard(habit) {
     action.appendChild(btn);
 
   } else if (habit.type === 'number') {
-    const val = Number(entry || 0);
+    const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
     const btn = document.createElement('button');
     btn.className = 'circle-action-btn' + (done ? ' done' : '');
     
     let fSize = '1.1rem';
+    let displayVal = val;
     if (val.toString().length > 3) fSize = '0.75rem';
     else if (val.toString().length > 2) fSize = '0.9rem';
 
-    btn.innerHTML = `<span style="font-size: ${fSize}">${val}</span>`;
+    btn.innerHTML = `<span style="font-size: ${fSize}">${displayVal}</span>`;
     btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
         btn.disabled = true; btn.style.opacity = '0.3'; btn.style.cursor = 'not-allowed';
@@ -480,7 +481,7 @@ function buildHabitCard(habit) {
     action.appendChild(btn);
 
   } else if (habit.type === 'timer') {
-    const elapsed = Number(entry || 0);
+    const elapsed = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
     const btn = document.createElement('button');
     btn.className = 'circle-action-btn' + (done ? ' done' : '');
     btn.innerHTML = `<span style="font-size: 0.8rem">${fmtTime(elapsed)}</span>`;
@@ -544,10 +545,10 @@ function updateProgress() {
   }
 }
 
-// ─── TOGGLE BOOLEAN ─────────────────────────────────────────────
 async function toggleBoolean(habit) {
-  const current = (logs[selectedDate] || {})[habit.id];
-  const newVal = !current;
+  const entry = (logs[selectedDate] || {})[habit.id];
+  const currentVal = (typeof entry === 'object' && entry !== null) ? !!entry.val : !!entry;
+  const newVal = !currentVal;
   await saveLog(habit.id, newVal);
   if (newVal) toast(`${habit.emoji} ${habit.name} completata!`);
 }
@@ -1460,6 +1461,7 @@ function renderRepsChart(container, habit, period) {
     btn.addEventListener('click', () => { currentChartPeriod = p.key; renderRepsChart(container, habit, p.key); });
     btnRow.appendChild(btn);
   });
+  selRow.appendChild(btnRow);
   container.appendChild(selRow);
 }
 

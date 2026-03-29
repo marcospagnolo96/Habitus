@@ -1151,6 +1151,20 @@ input::placeholder { color: var(--text3); }
 .reps-bar-fill.unscheduled { background: var(--bg2); border: 1px dashed var(--border); }
 .reps-bar-fill.today { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
+/* Compact Chart Classes */
+.reps-chart-wrap.period-week .reps-bar-col { min-width: 14px; }
+.reps-chart-wrap.period-week .reps-bar-track { width: 8px; border-radius: 2px; }
+.reps-chart-wrap.period-week .reps-bar-lbl { font-size: 0.5rem; }
+.reps-chart-wrap.period-week { gap: 2px; }
+
+.reps-chart-wrap.period-month .reps-bar-col { min-width: 30px; }
+.reps-chart-wrap.period-month .reps-bar-track { width: 16px; border-radius: 4px; }
+.reps-chart-wrap.period-month { gap: 8px; }
+
+.reps-chart-wrap.period-year .reps-bar-col { min-width: 50px; }
+.reps-chart-wrap.period-year .reps-bar-track { width: 24px; border-radius: 6px; }
+.reps-chart-wrap.period-year { gap: 15px; }
+
 .reps-bar-val { font-size: 0.6rem; color: var(--text3); font-weight: 700; height: 12px; }
 .reps-bar-lbl { font-size: 0.6rem; color: var(--text3); text-transform: uppercase; font-weight: 700; white-space: nowrap; }
 .reps-bar-lbl.today { color: var(--accent); font-weight: 800; }
