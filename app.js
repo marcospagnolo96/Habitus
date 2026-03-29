@@ -148,12 +148,10 @@ function isHabitLoggedOnDay(habit, ds) {
   const entry = dayLogs[habit.id];
   if (entry === undefined || entry === null) return false;
   
-  // Se è un oggetto, controlliamo se c'è un valore o se è saltato
   if (typeof entry === 'object') {
     if (entry.skip) return false;
-    return entry.val !== undefined && entry.val !== null && entry.val !== false && entry.val !== 0;
+    return true; 
   }
-  // Se è primitivo
   return !!entry;
 }
 
@@ -337,9 +335,8 @@ function subscribeLogs() {
     // Refresh di tutto ciò che dipende dai log
     renderHabits();
     updateProgress();
-    renderDashboard(); // Heatmaps nella Home
-    renderStatsDashboard(); // Heatmaps nelle Statistiche
-    renderStats(statsHabitId); // Refresh grafici dettaglio
+    renderDashboard(); 
+    renderStatsDashboard(); 
     
     // Se siamo nel dettaglio di un'abitudine, aggiorna i grafici e i dati
     if (statsHabitId) {
@@ -575,7 +572,7 @@ function freqLabel(habit) {
 // ─── PROGRESS ────────────────────────────────────────────────────
 function updateProgress() {
   const todayHabits = habits.filter(h => habitScheduledFor(h, selectedDate));
-  const done = todayHabits.filter(h => isHabitDone(h, selectedDate)).length;
+  const done = todayHabits.filter(h => isHabitDayGoalMet(h, selectedDate)).length;
   const total = todayHabits.length;
 
   // Segmented bar: fill from left by count
