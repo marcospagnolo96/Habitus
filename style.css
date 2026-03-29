@@ -439,6 +439,30 @@ input::placeholder { color: var(--text3); }
 
 .habit-action { flex-shrink: 0; }
 
+.paused-section-header {
+  margin-top: 32px;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.paused-section-header::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.paused-card {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
 /* ─── ACTION BUTTONS ───────────────────────────────────────────── */
 .circle-action-btn {
   width: 42px; height: 42px;

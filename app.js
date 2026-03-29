@@ -388,25 +388,37 @@ function buildDateStrip() {
 function renderHabits() {
   const container = document.getElementById('habits-container');
   const emptyState = document.getElementById('empty-state');
-  const hFiltered = habits.filter(h => {
-    // Escludi abitudini sospese dalla lista Oggi
-    if (h.paused) return false;
-    return habitScheduledFor(h, selectedDate);
-  });
+  const hActive = habits.filter(h => !h.paused && habitScheduledFor(h, selectedDate));
+  const hPaused = habits.filter(h => h.paused);
 
   // Clear old cards but keep empty state
-  container.querySelectorAll('.habit-card').forEach(c => c.remove());
+  container.querySelectorAll('.habit-card, .paused-section-header').forEach(c => c.remove());
 
-  if (hFiltered.length === 0) {
+  if (hActive.length === 0 && hPaused.length === 0) {
     emptyState.classList.remove('hidden');
     return;
   }
   emptyState.classList.add('hidden');
 
-  hFiltered.forEach(habit => {
+  // Active items
+  hActive.forEach(habit => {
     const card = buildHabitCard(habit);
     container.appendChild(card);
   });
+
+  // Paused items section
+  if (hPaused.length > 0) {
+    const header = document.createElement('div');
+    header.className = 'paused-section-header';
+    header.innerHTML = `<span>Abitudini Sospese</span>`;
+    container.appendChild(header);
+
+    hPaused.forEach(habit => {
+      const card = buildHabitCard(habit);
+      card.classList.add('paused-card');
+      container.appendChild(card);
+    });
+  }
 
   buildDateStrip(); // refresh dots
 }
@@ -585,26 +597,31 @@ async function toggleBoolean(habit) {
 
 // ─── SAVE LOG ────────────────────────────────────────────────────
 async function saveLog(habitId, valueOrUpdate) {
+  if (!currentUser) return;
   const logRef = doc(db, 'users', currentUser.uid, 'logs', selectedDate);
-  const existing = logs[selectedDate] || {};
-  const currentEntry = existing[habitId];
+  
+  if (!logs[selectedDate]) logs[selectedDate] = {};
+  const currentEntry = logs[selectedDate][habitId];
 
   let newEntry;
   if (typeof valueOrUpdate === 'object' && valueOrUpdate !== null) {
-    // Se è un oggetto, uniamo con l'esistente (convertendolo in oggetto se era primitivo)
     const base = (typeof currentEntry === 'object' && currentEntry !== null) 
                  ? currentEntry : { val: currentEntry };
     newEntry = { ...base, ...valueOrUpdate };
   } else {
-    // Se è un valore semplice, aggiorniamo 'val' preservando gli altri campi se presenti
     if (typeof currentEntry === 'object' && currentEntry !== null) {
       newEntry = { ...currentEntry, val: valueOrUpdate };
     } else {
-      newEntry = valueOrUpdate; // Resta primitivo se lo era
+      newEntry = valueOrUpdate;
     }
   }
 
-  await setDoc(logRef, { ...existing, [habitId]: newEntry }, { merge: true });
+  // Aggiornamento locale immediato per UI ultra-reattiva
+  logs[selectedDate][habitId] = newEntry;
+  // Non chiamiamo renderHabits() qui perché onSnapshot lo farà, 
+  // ma il feedback visuale del pulsante è già avvenuto in toggleBoolean/openLogModal
+  
+  await setDoc(logRef, { [habitId]: newEntry }, { merge: true });
 }
 
 // ─── LOG MODAL ───────────────────────────────────────────────────
@@ -1400,61 +1417,55 @@ function renderRepsChart(container, habit, period) {
   let bars = [];
   const todayDs = todayStr();
   if (period === 'week') {
-    let d = new Date(statsViewYear, 0, 1);
-    while (d.getDay() !== 1) { d.setDate(d.getDate() - 1); }
-    for (let w = 1; w <= 53; w++) {
-      let wVal = 0; let hasToday = false; let inYear = false; let firstDayOfW = null;
-      for (let i = 0; i < 7; i++) {
-        const cur = new Date(d); cur.setDate(d.getDate() + i);
-        if (i === 0) firstDayOfW = new Date(cur);
-        if (cur.getFullYear() === statsViewYear) inYear = true;
-        const ds = dateStr(cur);
+    // Mostra le ultime 12 settimane invece di tutto l'anno per compattezza e precisione
+    const curr = new Date();
+    curr.setDate(curr.getDate() - (curr.getDay() || 7) + 1); // Lunedì corrente
+    
+    for (let i = 11; i >= 0; i--) {
+      let wStart = new Date(curr);
+      wStart.setDate(curr.getDate() - (i * 7));
+      let wVal = 0;
+      let hasToday = false;
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(wStart);
+        day.setDate(wStart.getDate() + d);
+        const ds = dateStr(day);
         if (ds === todayDs) hasToday = true;
-        const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) wVal++; }
-        else { 
-          const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-          wVal += Number(val); 
-        }
+        if (isHabitDayGoalMet(habit, ds)) wVal++;
       }
-      if (inYear) {
-         const lbl = mNames[firstDayOfW.getMonth()].toLowerCase().substring(0,3) + ' ' + firstDayOfW.getDate();
-         bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true });
-      }
-      d.setDate(d.getDate() + 7);
-      if (d.getFullYear() > statsViewYear && d.getMonth() === 0 && d.getDate() > 7) break;
+      const lbl = wStart.getDate() + ' ' + mNames[wStart.getMonth()].toLowerCase();
+      bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true, max: 7 });
     }
   } else if (period === 'month') {
-    for (let m = 0; m < 12; m++) {
-      let mVal = 0; const daysInM = new Date(statsViewYear, m + 1, 0).getDate(); let hasToday = false;
-      for (let d = 1; d <= daysInM; d++) {
-        const ds = `${statsViewYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    // Mostra gli ultimi 12 mesi
+    const today = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      let mVal = 0;
+      const daysInM = new Date(y, m + 1, 0).getDate();
+      let hasToday = false;
+      for (let day = 1; day <= daysInM; day++) {
+        const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         if (ds === todayDs) hasToday = true;
-        const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) mVal++; }
-        else { 
-          const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-          mVal += Number(val); 
-        }
+        if (isHabitDayGoalMet(habit, ds)) mVal++;
       }
-      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
+      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true, max: daysInM });
     }
   } else {
+    // Mostra gli anni dal 2024 a oggi
     const startY = 2024; 
     const endY = new Date().getFullYear();
-    for (let y = startY; y <= Math.max(endY, statsViewYear); y++) {
+    for (let y = startY; y <= endY; y++) {
       let yVal = 0;
+      const daysInY = ((y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0)) ? 366 : 365;
       Object.keys(logs).forEach(ds => {
-        if (ds.startsWith(String(y))) {
-          const entry = logs[ds][habit.id];
-          if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) yVal++; }
-          else { 
-            const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-            yVal += Number(val); 
-          }
+        if (ds.startsWith(String(y)) && isHabitDayGoalMet(habit, ds)) {
+          yVal++;
         }
       });
-      bars.push({ val: yVal, label: String(y), isToday: y === new Date().getFullYear(), scheduled: true });
+      bars.push({ val: yVal, label: String(y), isToday: y === endY, scheduled: true, max: daysInY });
     }
   }
 
