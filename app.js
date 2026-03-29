@@ -333,10 +333,18 @@ function subscribeLogs() {
   unsubLogs = onSnapshot(logsRef, snap => {
     logs = {};
     snap.docs.forEach(d => { logs[d.id] = d.data(); });
+    
+    // Refresh di tutto ciò che dipende dai log
     renderHabits();
     updateProgress();
-    if (statsHabitId && !document.getElementById('stats-view').classList.contains('hidden')) {
-      renderStats(statsHabitId);
+    renderDashboard(); // Heatmaps nella Home
+    renderStatsDashboard(); // Heatmaps nelle Statistiche
+    renderStats(statsHabitId); // Refresh grafici dettaglio
+    
+    // Se siamo nel dettaglio di un'abitudine, aggiorna i grafici e i dati
+    if (statsHabitId) {
+       const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
+       if (detailVisible) renderStats(statsHabitId);
     }
   });
 }
@@ -1417,7 +1425,7 @@ function renderRepsChart(container, habit, period) {
   let bars = [];
   const todayDs = todayStr();
   if (period === 'week') {
-    // Mostra le ultime 12 settimane invece di tutto l'anno per compattezza e precisione
+    // Mostra le ultime 12 settimane
     const curr = new Date();
     curr.setDate(curr.getDate() - (curr.getDay() || 7) + 1); // Lunedì corrente
     
@@ -1431,10 +1439,17 @@ function renderRepsChart(container, habit, period) {
         day.setDate(wStart.getDate() + d);
         const ds = dateStr(day);
         if (ds === todayDs) hasToday = true;
-        if (isHabitDayGoalMet(habit, ds)) wVal++;
+        const entry = (logs[ds] || {})[habit.id];
+        const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+
+        if (habit.type === 'boolean') {
+          if (isHabitLoggedOnDay(habit, ds)) wVal++;
+        } else {
+          wVal += Number(val || 0);
+        }
       }
       const lbl = wStart.getDate() + ' ' + mNames[wStart.getMonth()].toLowerCase();
-      bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true, max: 7 });
+      bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true });
     }
   } else if (period === 'month') {
     // Mostra gli ultimi 12 mesi
@@ -1449,9 +1464,16 @@ function renderRepsChart(container, habit, period) {
       for (let day = 1; day <= daysInM; day++) {
         const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         if (ds === todayDs) hasToday = true;
-        if (isHabitDayGoalMet(habit, ds)) mVal++;
+        const entry = (logs[ds] || {})[habit.id];
+        const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+
+        if (habit.type === 'boolean') {
+          if (isHabitLoggedOnDay(habit, ds)) mVal++;
+        } else {
+          mVal += Number(val || 0);
+        }
       }
-      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true, max: daysInM });
+      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
     }
   } else {
     // Mostra gli anni dal 2024 a oggi
@@ -1459,13 +1481,19 @@ function renderRepsChart(container, habit, period) {
     const endY = new Date().getFullYear();
     for (let y = startY; y <= endY; y++) {
       let yVal = 0;
-      const daysInY = ((y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0)) ? 366 : 365;
       Object.keys(logs).forEach(ds => {
-        if (ds.startsWith(String(y)) && isHabitDayGoalMet(habit, ds)) {
-          yVal++;
+        if (ds.startsWith(String(y))) {
+          const entry = (logs[ds] || {})[habit.id];
+          const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+
+          if (habit.type === 'boolean') {
+            if (isHabitLoggedOnDay(habit, ds)) yVal++;
+          } else {
+            yVal += Number(val || 0);
+          }
         }
       });
-      bars.push({ val: yVal, label: String(y), isToday: y === endY, scheduled: true, max: daysInY });
+      bars.push({ val: yVal, label: String(y), isToday: y === endY, scheduled: true });
     }
   }
 
