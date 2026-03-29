@@ -1608,6 +1608,17 @@ function renderRepsChart(container, habit, period) {
     chartWrap.appendChild(col);
   });
   container.appendChild(chartWrap);
+  
+  // Scorrimento automatico al giorno corrente se presente
+  setTimeout(() => {
+    const active = chartWrap.querySelector('.today');
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    } else {
+      // Se non c'è oggi (es. anno passato), scorri in fondo
+      chartWrap.scrollLeft = chartWrap.scrollWidth;
+    }
+  }, 100);
 
   const selRow = document.createElement('div');
   selRow.className = 'chart-period-row-bottom';

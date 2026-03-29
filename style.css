@@ -1137,12 +1137,23 @@ input::placeholder { color: var(--text3); }
 /* ─── REPS CHART ──────────────────────────────────────────────── */
 .reps-chart-wrap {
   display: flex; align-items: flex-end; gap: 8px;
-  height: 140px; padding: 10px 0;
-  overflow-x: auto; scrollbar-width: none;
+  height: 150px; padding: 10px 0 20px;
+  overflow-x: auto;
   scroll-behavior: smooth;
   margin-top: 8px;
+  -webkit-overflow-scrolling: touch;
 }
-.reps-chart-wrap::-webkit-scrollbar { display: none; }
+.reps-chart-wrap::-webkit-scrollbar {
+  height: 4px;
+}
+.reps-chart-wrap::-webkit-scrollbar-track {
+  background: var(--bg3);
+  border-radius: 10px;
+}
+.reps-chart-wrap::-webkit-scrollbar-thumb {
+  background: var(--accent-dim);
+  border-radius: 10px;
+}
 
 .reps-bar-col {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
