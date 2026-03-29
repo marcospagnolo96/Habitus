@@ -334,8 +334,11 @@ function subscribeLogs() {
   unsubLogs = onSnapshot(logsRef, 
     snap => {
       console.log("Snapshot log ricevuto. Documenti:", snap.size);
-      logs = {};
-      snap.docs.forEach(d => { logs[d.id] = d.data(); });
+      // Invece di resettare tutto (logs = {}), aggiorniamo in modo incrementale
+      // per preservare eventuali update locali (ottimistici) non ancora sul server.
+      snap.docs.forEach(d => { 
+        logs[d.id] = d.data(); 
+      });
       
       try {
         renderHabits();
