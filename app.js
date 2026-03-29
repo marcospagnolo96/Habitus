@@ -1498,25 +1498,30 @@ function renderRepsChart(container, habit, period) {
   let bars = [];
   const todayDs = todayStr();
   if (period === 'week') {
-    // Mostra le ultime 12 settimane
-    const curr = new Date();
-    curr.setDate(curr.getDate() - (curr.getDay() || 7) + 1); // Lunedì corrente
+    // Show all 52/53 weeks of statsViewYear
+    const jan1 = new Date(statsViewYear, 0, 1);
+    const day = jan1.getDay();
+    // Monday of the first week of the year
+    const startOfFirstWeek = new Date(jan1);
+    startOfFirstWeek.setDate(jan1.getDate() - ((day + 6) % 7));
     
-    for (let i = 11; i >= 0; i--) {
-      let wStart = new Date(curr);
-      wStart.setDate(curr.getDate() - (i * 7));
+    for (let i = 0; i < 53; i++) {
+      let wStart = new Date(startOfFirstWeek);
+      wStart.setDate(startOfFirstWeek.getDate() + (i * 7));
+      if (wStart.getFullYear() > statsViewYear && i >= 52) break; // Stop at next year
+      
       let wVal = 0;
       let hasToday = false;
       for (let d = 0; d < 7; d++) {
-        const day = new Date(wStart);
-        day.setDate(wStart.getDate() + d);
-        const ds = dateStr(day);
+        const dayDate = new Date(wStart);
+        dayDate.setDate(wStart.getDate() + d);
+        const ds = dateStr(dayDate);
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
         const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
 
         if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) wVal++;
+          if (isHabitDayGoalMet(habit, ds)) wVal++;
         } else {
           wVal += Number(val || 0);
         }
@@ -1525,12 +1530,9 @@ function renderRepsChart(container, habit, period) {
       bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true });
     }
   } else if (period === 'month') {
-    // Mostra gli ultimi 12 mesi
-    const today = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const m = d.getMonth();
-      const y = d.getFullYear();
+    // Show all 12 months of statsViewYear
+    for (let m = 0; m < 12; m++) {
+      const y = statsViewYear;
       let mVal = 0;
       const daysInM = new Date(y, m + 1, 0).getDate();
       let hasToday = false;
@@ -1541,7 +1543,7 @@ function renderRepsChart(container, habit, period) {
         const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
 
         if (habit.type === 'boolean') {
-          if (isHabitLoggedOnDay(habit, ds)) mVal++;
+          if (isHabitDayGoalMet(habit, ds)) mVal++;
         } else {
           mVal += Number(val || 0);
         }
@@ -1549,24 +1551,40 @@ function renderRepsChart(container, habit, period) {
       bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
     }
   } else {
-    // Mostra gli anni dal 2024 a oggi
-    const startY = 2024; 
-    const endY = new Date().getFullYear();
-    for (let y = startY; y <= endY; y++) {
+    // Show all years that have at least one repetition
+    const yearsWithData = new Set();
+    Object.keys(logs).forEach(dateStr => {
+      const entry = logs[dateStr][habit.id];
+      if (entry !== undefined && entry !== null) {
+        const val = (typeof entry === 'object') ? entry.val : entry;
+        if (Number(val || 0) > 0) {
+          yearsWithData.add(dateStr.split('-')[0]);
+        }
+      }
+    });
+
+    const sortedYears = Array.from(yearsWithData).sort();
+    if (sortedYears.length === 0) {
+      // Fallback to current year if no data
+      sortedYears.push(new Date().getFullYear().toString());
+    }
+
+    sortedYears.forEach(y => {
       let yVal = 0;
+      const yearNum = parseInt(y);
       Object.keys(logs).forEach(ds => {
-        if (ds.startsWith(String(y))) {
+        if (ds.startsWith(y)) {
           const entry = (logs[ds] || {})[habit.id];
           const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
 
           if (habit.type === 'boolean') {
-            if (isHabitLoggedOnDay(habit, ds)) yVal++;
+            if (isHabitDayGoalMet(habit, ds)) yVal++;
           } else {
             yVal += Number(val || 0);
           }
         }
       });
-      bars.push({ val: yVal, label: String(y), isToday: y === endY, scheduled: true });
+      bars.push({ val: yVal, label: y, isToday: yearNum === new Date().getFullYear(), scheduled: true });
     }
   }
 
@@ -1583,7 +1601,7 @@ function renderRepsChart(container, habit, period) {
     if (b.val > 0 && habit.type !== 'boolean') { fill.title = String(b.val); }
     track.appendChild(fill);
     const valLbl = document.createElement('div'); valLbl.className = 'reps-bar-val';
-    if (b.val > 0) valLbl.textContent = habit.type === 'boolean' ? b.val : (b.val > 999 ? Math.round(b.val/1000)+'k' : b.val);
+    if (b.val > 0) valLbl.textContent = b.val;
     const lbl = document.createElement('div'); lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
     lbl.textContent = b.label;
     col.appendChild(valLbl); col.appendChild(track); col.appendChild(lbl);
