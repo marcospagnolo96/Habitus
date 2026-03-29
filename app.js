@@ -14,7 +14,7 @@ import {
 import {
   collection, doc, setDoc, getDoc, getDocs,
   deleteDoc, onSnapshot, query, orderBy,
-  serverTimestamp
+  serverTimestamp, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ─── STATE ──────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ function isHabitLoggedOnDay(habit, ds) {
   return !!entry;
 }
 
-function isHabitDone(habit, ds) {
+function isHabitDayGoalMet(habit, ds) {
   const entry = (logs[ds] || {})[habit.id];
   const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
   const skip = (typeof entry === 'object' && entry !== null) ? entry.skip : false;
@@ -199,11 +199,18 @@ function checkMonthlyGoalMet(habit, dateString) {
   return count >= target;
 }
 
-// Full check (logged today OR goal met)
+// Full check (logged today OR periodic goal met)
+// This is the main function used by the UI
 function isHabitDone(habit, dateString) {
-  if (isHabitLoggedOnDay(habit, dateString)) return true;
+  if (isHabitSkippedOnDay(habit, dateString)) return false;
+  
+  // 1. Check if the daily goal is met for this specific day
+  if (isHabitDayGoalMet(habit, dateString)) return true;
+  
+  // 2. For periodic habits, check if the quota for the week/month is met
   if (habit.freq === 'weekly') return checkWeeklyGoalMet(habit, dateString);
   if (habit.freq === 'monthly') return checkMonthlyGoalMet(habit, dateString);
+  
   return false;
 }
 
