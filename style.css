@@ -63,6 +63,8 @@ body {
 }
 .screen.active { display: flex; }
 
+.hidden { display: none !important; }
+
 /* ─── APP VIEWS TRANSITIONS ─────────────────────────────────────── */
 .app-view {
   position: absolute;
