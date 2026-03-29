@@ -1036,10 +1036,23 @@ function renderStats(habitId) {
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
 
-  for (let i = 29; i >= 0; i--) {
+  // Determine start date (createdAt or 1 year fallback)
+  let start = new Date();
+  start.setDate(start.getDate() - 365);
+  if (habit.createdAt) {
+    const ca = (typeof habit.createdAt.toDate === 'function') ? habit.createdAt.toDate() : new Date(habit.createdAt);
+    if (!isNaN(ca.getTime())) start = ca;
+  }
+  start.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
+
+  for (let i = diffDays; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const ds = dateStr(d);
+    if (ds < dateStr(start)) continue; 
+    
     if (!habitScheduledFor(habit, ds)) continue;
     totalDays++;
     const entry = (logs[ds] || {})[habit.id];
@@ -1068,7 +1081,7 @@ function renderStats(habitId) {
 
   grid.appendChild(makeCard(`🔥 ${streak}`, 'Streak attuale', true));
   grid.appendChild(makeCard(`⚡ ${bestStreak}`, 'Miglior streak', true));
-  grid.appendChild(makeCard(`${pct}%`, 'Completamento 30gg'));
+  grid.appendChild(makeCard(`${pct}%`, 'Completamento totale'));
   grid.appendChild(makeCard(doneDays, 'Completamenti'));
   if (habit.type === 'number' && valueCount > 0) {
     const avg = (totalValue / valueCount).toFixed(1);
