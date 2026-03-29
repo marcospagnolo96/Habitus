@@ -35,6 +35,8 @@ let logTimerStart = null;
 let logTimerElapsed = 0;
 let logTimerInterval = null;
 let statsHabitId = null;
+let statsViewYear = new Date().getFullYear();
+let currentChartPeriod = 'week';
 let unsubHabits = null;
 let unsubLogs = null;
 
@@ -290,6 +292,9 @@ function subscribeLogs() {
     snap.docs.forEach(d => { logs[d.id] = d.data(); });
     renderHabits();
     updateProgress();
+    if (statsHabitId && !document.getElementById('stats-view').classList.contains('hidden')) {
+      renderStats(statsHabitId);
+    }
   });
 }
 
@@ -1029,6 +1034,23 @@ function renderStats(habitId) {
   content.innerHTML = '';
   content.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
+  // ── Year Selector ───────────────────────────────────────────────
+  const yrRow = document.createElement('div');
+  yrRow.className = 'stats-year-nav';
+  yrRow.innerHTML = `
+    <button class="yr-btn" id="yr-prev">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <span class="yr-label">${statsViewYear}</span>
+    <button class="yr-btn" id="yr-next">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  `;
+  content.appendChild(yrRow);
+
+  document.getElementById('yr-prev').addEventListener('click', () => { statsViewYear--; renderStats(habitId); });
+  document.getElementById('yr-next').addEventListener('click', () => { statsViewYear++; renderStats(habitId); });
+
   // ── Compute overall stats ────────────────────────────────────────
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
@@ -1082,13 +1104,13 @@ function renderStats(habitId) {
   // ── Interactive Monthly Calendar ─────────────────────────────────
   const calWrap = document.createElement('div');
   calWrap.className = 'stats-cal-section';
-  renderInteractiveCalendar(calWrap, habit);
+  renderInteractiveCalendar(calWrap, habit, statsViewYear);
   content.appendChild(calWrap);
 
   // ── Reps chart with period selector ──────────────────────────────
   const chartSection = document.createElement('div');
   chartSection.className = 'stats-chart-section';
-  renderRepsChart(chartSection, habit, 'week');
+  renderRepsChart(chartSection, habit, currentChartPeriod);
   content.appendChild(chartSection);
 }
 
@@ -1216,6 +1238,7 @@ function renderInteractiveCalendar(container, habit, year, month) {
 
 // ── REPS CHART ───────────────────────────────────────────────────────
 function renderRepsChart(container, habit, period) {
+  currentChartPeriod = period;
   container.innerHTML = '';
 
   // Period selector
@@ -1233,7 +1256,10 @@ function renderRepsChart(container, habit, period) {
     const btn = document.createElement('button');
     btn.className = 'chart-period-btn' + (p.key === period ? ' active' : '');
     btn.textContent = p.label;
-    btn.addEventListener('click', () => renderRepsChart(container, habit, p.key));
+    btn.addEventListener('click', () => {
+      currentChartPeriod = p.key;
+      renderRepsChart(container, habit, p.key);
+    });
     btnRow.appendChild(btn);
   });
 
@@ -1242,54 +1268,73 @@ function renderRepsChart(container, habit, period) {
   container.appendChild(selRow);
 
   // Build data based on period
-  const today = new Date();
   let bars = [];
+  const todayDs = todayStr();
 
   if (period === 'week') {
-    // Last 7 days individually
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const ds = dateStr(d);
-      const dayNames = ['Do','Lu','Ma','Me','Gi','Ve','Sa'];
-      const scheduled = habitScheduledFor(habit, ds);
-      let val = 0;
-      if (scheduled) {
+    // All weeks of statsViewYear
+    let d = new Date(statsViewYear, 0, 1);
+    while (d.getDay() !== 1) { d.setDate(d.getDate() - 1); }
+    
+    for (let w = 1; w <= 53; w++) {
+      let wVal = 0;
+      let hasToday = false;
+      let inYear = false;
+      for (let i = 0; i < 7; i++) {
+        const cur = new Date(d);
+        cur.setDate(d.getDate() + i);
+        if (cur.getFullYear() === statsViewYear) inYear = true;
+        const ds = dateStr(cur);
+        if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') val = isHabitLoggedOnDay(habit, ds) ? 1 : 0;
-        else val = Number(entry || 0);
+        if (habit.type === 'boolean') {
+          if (isHabitLoggedOnDay(habit, ds)) wVal++;
+        } else {
+          wVal += Number(entry || 0);
+        }
       }
-      bars.push({ val, label: dayNames[d.getDay()], isToday: ds === todayStr(), scheduled });
+      if (inYear) {
+         bars.push({ val: wVal, label: 'S' + w, isToday: hasToday, scheduled: true });
+      }
+      d.setDate(d.getDate() + 7);
+      if (d.getFullYear() > statsViewYear && d.getMonth() === 0 && d.getDate() > 7) break;
     }
   } else if (period === 'month') {
-    // Last 4 weeks
-    for (let w = 3; w >= 0; w--) {
-      let wVal = 0;
-      for (let d = 6; d >= 0; d--) {
-        const day = new Date(today);
-        day.setDate(today.getDate() - w * 7 - d);
-        const ds = dateStr(day);
+    // All 12 months of statsViewYear
+    const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+    for (let m = 0; m < 12; m++) {
+      let mVal = 0;
+      const daysInM = new Date(statsViewYear, m + 1, 0).getDate();
+      let hasToday = false;
+      for (let d = 1; d <= daysInM; d++) {
+        const ds = `${statsViewYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') wVal += isHabitLoggedOnDay(habit, ds) ? 1 : 0;
-        else wVal += Number(entry || 0);
+        if (habit.type === 'boolean') {
+          if (isHabitLoggedOnDay(habit, ds)) mVal++;
+        } else {
+          mVal += Number(entry || 0);
+        }
       }
-      bars.push({ val: wVal, label: `S${4-w}`, scheduled: true });
+      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
     }
   } else {
-    // Year: last 12 months
-    for (let i = 11; i >= 0; i--) {
-      let y = today.getFullYear(), m = today.getMonth() - i;
-      while (m < 0) { m += 12; y--; }
-      const daysInM = new Date(y, m + 1, 0).getDate();
-      let mVal = 0;
-      for (let d = 1; d <= daysInM; d++) {
-        const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const entry = (logs[ds] || {})[habit.id];
-        if (habit.type === 'boolean') mVal += isHabitLoggedOnDay(habit, ds) ? 1 : 0;
-        else mVal += Number(entry || 0);
-      }
-      const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-      bars.push({ val: mVal, label: mNames[m], scheduled: true });
+    // All years from 2024 to current
+    const startY = 2024; 
+    const endY = new Date().getFullYear();
+    for (let y = startY; y <= Math.max(endY, statsViewYear); y++) {
+      let yVal = 0;
+      Object.keys(logs).forEach(ds => {
+        if (ds.startsWith(String(y))) {
+          const entry = logs[ds][habit.id];
+          if (habit.type === 'boolean') {
+            if (isHabitLoggedOnDay(habit, ds)) yVal++;
+          } else {
+            yVal += Number(entry || 0);
+          }
+        }
+      });
+      bars.push({ val: yVal, label: String(y), isToday: y === new Date().getFullYear(), scheduled: true });
     }
   }
 

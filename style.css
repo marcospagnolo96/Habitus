@@ -583,6 +583,26 @@ input::placeholder { color: var(--text3); }
   font-weight: 600; margin-bottom: 12px;
 }
 
+/* ─── YEAR SELECTOR ────────────────────────────────────────────── */
+.stats-year-nav {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; margin: 4px 0 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 8px; border-radius: var(--radius-sm);
+}
+.yr-btn {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); width: 32px; height: 32px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s ease;
+}
+.yr-btn:active { transform: scale(0.9); background: var(--bg); }
+.yr-label {
+  font-family: var(--font-display); font-size: 1.4rem;
+  font-weight: 400; color: var(--text); min-width: 60px; text-align: center;
+}
+
 /* ─── INTERACTIVE CALENDAR ─────────────────────────────────────── */
 .stats-cal-section {
   margin-bottom: 24px;
@@ -697,16 +717,22 @@ input::placeholder { color: var(--text3); }
 
 .reps-chart-wrap {
   display: flex; align-items: flex-end;
-  gap: 5px;
+  gap: 6px;
   height: 130px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 4px 8px;
 }
+.reps-chart-wrap::-webkit-scrollbar { display: none; }
+
 .reps-bar-col {
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 32px;
+  height: 100%;
   display: flex; flex-direction: column;
   align-items: center;
-  gap: 4px;
-  height: 100%;
   justify-content: flex-end;
+  gap: 4px;
 }
 .reps-bar-track {
   width: 100%;
