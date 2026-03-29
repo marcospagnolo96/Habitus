@@ -1121,24 +1121,38 @@ input::placeholder { color: var(--text3); }
 .reps-chart-wrap::-webkit-scrollbar { display: none; }
 
 .reps-bar-col {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  min-width: 42px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0;
 }
+
+/* Specifiche per periodo per compattezza */
+.period-week .reps-bar-col { min-width: 16px; }
+.period-month .reps-bar-col { min-width: 32px; }
+.period-year .reps-bar-col { min-width: 50px; }
+
+.period-week .reps-bar-track { width: 10px; border-radius: 3px; }
+.period-month .reps-bar-track { width: 16px; border-radius: 5px; }
+.period-year .reps-bar-track { width: 22px; border-radius: 8px; }
+
+.reps-chart-wrap.period-week { gap: 3px; }
+.reps-chart-wrap.period-month { gap: 8px; }
+.reps-chart-wrap.period-year { gap: 15px; }
+
 .reps-bar-track {
-  width: 18px; height: 90px; background: var(--bg3);
-  border-radius: 6px; position: relative; overflow: hidden;
+  height: 90px; background: var(--bg3);
+  position: relative; overflow: hidden;
   display: flex; flex-direction: column-reverse;
 }
 .reps-bar-fill {
-  width: 100%; border-radius: 6px; 
+  width: 100%; border-radius: inherit; 
   background: var(--habit-color, var(--accent));
   transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .reps-bar-fill.unscheduled { background: var(--bg2); border: 1px dashed var(--border); }
 .reps-bar-fill.today { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
-.reps-bar-val { font-size: 0.65rem; color: var(--text3); font-weight: 700; height: 12px; }
-.reps-bar-lbl { font-size: 0.65rem; color: var(--text3); text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+.reps-bar-val { font-size: 0.6rem; color: var(--text3); font-weight: 700; height: 12px; }
+.reps-bar-lbl { font-size: 0.6rem; color: var(--text3); text-transform: uppercase; font-weight: 700; white-space: nowrap; }
 .reps-bar-lbl.today { color: var(--accent); font-weight: 800; }
 
 .chart-period-row-bottom {
@@ -1169,17 +1183,36 @@ input::placeholder { color: var(--text3); }
 
 /* ─── PAUSED HABIT STYLES ────────────────────────────────────── */
 .habit-card.paused {
-  opacity: 0.5; filter: grayscale(1);
+  opacity: 0.6; filter: grayscale(0.8);
 }
 .habit-card.paused::after {
   content: 'SOSPESO';
-  position: absolute; top: 12px; right: 60px;
+  position: absolute; top: 12px; right: 12px;
   font-size: 0.6rem; letter-spacing: 0.05em; font-weight: 800;
-  background: var(--bg3); color: var(--text3);
-  padding: 3px 8px; border-radius: 6px;
-  border: 1px solid var(--border);
+  background: var(--accent); color: #000;
+  padding: 2px 6px; border-radius: 4px;
+  pointer-events: none;
 }
 
-.action-btn.secondary {
-  background: var(--bg3); border-style: dashed; opacity: 0.8;
+.action-btn-close {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.action-btn-close:active {
+  transform: scale(0.98);
+  background: var(--bg2);
 }

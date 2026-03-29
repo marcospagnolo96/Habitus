@@ -298,6 +298,8 @@ function subscribeHabits() {
   const habitsRef = collection(db, 'users', currentUser.uid, 'habits');
   unsubHabits = onSnapshot(query(habitsRef, orderBy('createdAt')), snap => {
     habits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderHabits();
+    renderDashboard();
     subscribeLogs();
   });
 }
@@ -632,7 +634,8 @@ function openLogModal(habit) {
         <button class="timer-ctrl-btn primary" id="log-timer-toggle">▶ Avvia</button>
         <button class="timer-ctrl-btn" id="log-timer-reset">↺ Reset</button>
       </div>
-      <div style="margin-top:16px; display:flex; gap:8px; align-items:center; width:100%; justify-content:center;">
+      <div class="timer-manual-wrap">
+         <button class="action-btn-close" id="action-sheet-close"></button>
          <label style="font-size:0.8rem; color:var(--text2);">Minuti (manuale):</label>
          <input type="number" id="manual-mins" placeholder="es. 30" style="background:var(--bg3); color:var(--text); font-size:1.1rem; width:70px; border:1px solid var(--border); border-radius:8px; padding:6px; text-align:center;" min="0" value="${minElapsed > 0 ? minElapsed : ''}" />
       </div>`;
@@ -1042,7 +1045,7 @@ function renderStatsDashboard() {
   
   habits.forEach(habit => {
     const card = document.createElement('div');
-    card.className = 'dashboard-card';
+    card.className = 'dashboard-card' + (habit.paused ? ' paused' : '');
     card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     
     const hdr = document.createElement('div');
@@ -1425,7 +1428,7 @@ function renderRepsChart(container, habit, period) {
   }
 
   const chartWrap = document.createElement('div');
-  chartWrap.className = 'reps-chart-wrap';
+  chartWrap.className = `reps-chart-wrap period-${period}`;
   const maxVal = Math.max(...bars.map(b => b.val), 1);
   const CHART_H = 90;
   bars.forEach(b => {
@@ -1457,7 +1460,6 @@ function renderRepsChart(container, habit, period) {
     btn.addEventListener('click', () => { currentChartPeriod = p.key; renderRepsChart(container, habit, p.key); });
     btnRow.appendChild(btn);
   });
-  selRow.appendChild(btnRow);
   container.appendChild(selRow);
 }
 
