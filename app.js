@@ -328,22 +328,36 @@ function subscribeHabits() {
 function subscribeLogs() {
   if (unsubLogs) { unsubLogs(); unsubLogs = null; }
   const logsRef = collection(db, 'users', currentUser.uid, 'logs');
-  unsubLogs = onSnapshot(logsRef, snap => {
-    logs = {};
-    snap.docs.forEach(d => { logs[d.id] = d.data(); });
-    
-    // Refresh di tutto ciò che dipende dai log
-    renderHabits();
-    updateProgress();
-    renderDashboard(); 
-    renderStatsDashboard(); 
-    
-    // Se siamo nel dettaglio di un'abitudine, aggiorna i grafici e i dati
-    if (statsHabitId) {
-       const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
-       if (detailVisible) renderStats(statsHabitId);
+  
+  console.log("Sottoscrizione log avviata per:", currentUser.uid);
+  
+  unsubLogs = onSnapshot(logsRef, 
+    snap => {
+      console.log("Snapshot log ricevuto. Documenti:", snap.size);
+      logs = {};
+      snap.docs.forEach(d => { logs[d.id] = d.data(); });
+      
+      try {
+        renderHabits();
+        updateProgress();
+        renderDashboard(); 
+        renderStatsDashboard(); 
+        
+        if (statsHabitId) {
+           const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
+           if (detailVisible) {
+             console.log("Aggiornamento stats per:", statsHabitId);
+             renderStats(statsHabitId);
+           }
+        }
+      } catch (err) {
+        console.error("Errore durante il refresh real-time:", err);
+      }
+    },
+    err => {
+      console.error("Errore Firestore Snapshot:", err);
     }
-  });
+  );
 }
 
 // ─── DATE STRIP ──────────────────────────────────────────────────
@@ -473,12 +487,9 @@ function buildHabitCard(habit) {
     d.setDate(todayD.getDate() - i);
     const ds = dateStr(d);
     const dot = document.createElement('div');
-    dot.className = 'led-dot';
-    if (!habitScheduledFor(habit, ds)) {
-       dot.classList.add('skip');
-    } else if (isHabitLoggedOnDay(habit, ds)) {
-       dot.classList.add('on');
-    }
+    const isLogged = isHabitLoggedOnDay(habit, ds);
+    const isSkipped = isHabitSkippedOnDay(habit, ds);
+    dot.className = 'led-dot' + (isLogged ? ' on' : '') + (isSkipped ? ' skip' : '');
     leds.appendChild(dot);
   }
 
