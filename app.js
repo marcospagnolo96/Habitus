@@ -653,13 +653,11 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
     renderDashboard(); 
     renderStatsDashboard(); 
     
-    // Aggiorna il dettaglio statistico se stiamo guardando questa abitudine
-    if (statsHabitId === habitId) {
-      const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
-      if (detailVisible) {
-        console.log("Refresh dettaglio stats per", habitId);
-        renderStats(habitId);
-      }
+    // Aggiorna sempre le stats se la detail view è aperta (coerenza globale)
+    const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
+    if (detailVisible && statsHabitId) {
+      console.log("Refresh dettaglio stats per", statsHabitId);
+      renderStats(statsHabitId);
     }
   } catch (e) {
     console.warn("Errore durante refresh ottimistico:", e);
