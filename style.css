@@ -1109,3 +1109,77 @@ input::placeholder { color: var(--text3); }
 }
 @keyframes toastIn  { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* ─── REPS CHART ──────────────────────────────────────────────── */
+.reps-chart-wrap {
+  display: flex; align-items: flex-end; gap: 8px;
+  height: 140px; padding: 10px 0;
+  overflow-x: auto; scrollbar-width: none;
+  scroll-behavior: smooth;
+  margin-top: 8px;
+}
+.reps-chart-wrap::-webkit-scrollbar { display: none; }
+
+.reps-bar-col {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-width: 42px; flex-shrink: 0;
+}
+.reps-bar-track {
+  width: 18px; height: 90px; background: var(--bg3);
+  border-radius: 6px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column-reverse;
+}
+.reps-bar-fill {
+  width: 100%; border-radius: 6px; 
+  background: var(--habit-color, var(--accent));
+  transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.reps-bar-fill.unscheduled { background: var(--bg2); border: 1px dashed var(--border); }
+.reps-bar-fill.today { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+
+.reps-bar-val { font-size: 0.65rem; color: var(--text3); font-weight: 700; height: 12px; }
+.reps-bar-lbl { font-size: 0.65rem; color: var(--text3); text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+.reps-bar-lbl.today { color: var(--accent); font-weight: 800; }
+
+.chart-period-row-bottom {
+  display: flex; justify-content: center; margin-top: 24px;
+}
+.chart-period-btns {
+  display: flex; background: var(--bg2); border: 1px solid var(--border); padding: 5px; border-radius: 14px;
+}
+.chart-period-btn {
+  padding: 8px 18px; border: none; background: none; color: var(--text2);
+  font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 10px;
+  transition: all 0.2s;
+}
+.chart-period-btn.active { background: var(--bg3); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+/* ─── NEW NOTES LAYOUT ────────────────────────────────────────── */
+.note-entry {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 16px 0; border-bottom: 1px solid var(--border);
+}
+.note-entry:last-child { border-bottom: none; }
+.note-date-side {
+  width: 75px; flex-shrink: 0; font-size: 0.85rem; font-weight: 800; color: var(--text3); line-height: 1.4; padding-top: 2px;
+}
+.note-text-side {
+  flex: 1; font-size: 1rem; line-height: 1.6; color: var(--text);
+}
+
+/* ─── PAUSED HABIT STYLES ────────────────────────────────────── */
+.habit-card.paused {
+  opacity: 0.5; filter: grayscale(1);
+}
+.habit-card.paused::after {
+  content: 'SOSPESO';
+  position: absolute; top: 12px; right: 60px;
+  font-size: 0.6rem; letter-spacing: 0.05em; font-weight: 800;
+  background: var(--bg3); color: var(--text3);
+  padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.action-btn.secondary {
+  background: var(--bg3); border-style: dashed; opacity: 0.8;
+}

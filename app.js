@@ -363,12 +363,16 @@ function buildDateStrip() {
 function renderHabits() {
   const container = document.getElementById('habits-container');
   const emptyState = document.getElementById('empty-state');
-  const todayHabits = habits.filter(h => habitScheduledFor(h, selectedDate));
+  const hFiltered = habits.filter(h => {
+    // Escludi abitudini sospese dalla lista Oggi
+    if (h.paused) return false;
+    return habitScheduledFor(h, selectedDate);
+  });
 
   // Clear old cards but keep empty state
   container.querySelectorAll('.habit-card').forEach(c => c.remove());
 
-  if (todayHabits.length === 0) {
+  if (hFiltered.length === 0) {
     emptyState.classList.remove('hidden');
     return;
   }
@@ -1305,7 +1309,6 @@ function renderHabitNotes(container, habit, year, month) {
   
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   let hasNotes = false;
-  
   const mNamesShort = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
   for (let i = 1; i <= daysInMonth; i++) {
@@ -1314,10 +1317,10 @@ function renderHabitNotes(container, habit, year, month) {
     if (typeof entry === 'object' && entry !== null && entry.note) {
       hasNotes = true;
       const item = document.createElement('div');
-      item.className = 'note-item';
+      item.className = 'note-entry';
       item.innerHTML = `
-        <div class="note-date">${i} ${mNamesShort[month]} ${year}</div>
-        <div class="note-text">${entry.note}</div>
+        <div class="note-date-side">${i} ${mNamesShort[month]}</div>
+        <div class="note-text-side">${entry.note}</div>
       `;
       list.appendChild(item);
     }
@@ -1375,10 +1378,13 @@ function renderRepsChart(container, habit, period) {
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
         if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) wVal++; }
-        else { wVal += Number(entry || 0); }
+        else { 
+          const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+          wVal += Number(val); 
+        }
       }
       if (inYear) {
-         const lbl = mNames[firstDayOfW.getMonth()].toLowerCase() + ' ' + firstDayOfW.getDate();
+         const lbl = mNames[firstDayOfW.getMonth()].toLowerCase().substring(0,3) + ' ' + firstDayOfW.getDate();
          bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true });
       }
       d.setDate(d.getDate() + 7);
@@ -1392,19 +1398,26 @@ function renderRepsChart(container, habit, period) {
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
         if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) mVal++; }
-        else { mVal += Number(entry || 0); }
+        else { 
+          const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+          mVal += Number(val); 
+        }
       }
       bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
     }
   } else {
-    const startY = 2024; const endY = new Date().getFullYear();
+    const startY = 2024; 
+    const endY = new Date().getFullYear();
     for (let y = startY; y <= Math.max(endY, statsViewYear); y++) {
       let yVal = 0;
       Object.keys(logs).forEach(ds => {
         if (ds.startsWith(String(y))) {
           const entry = logs[ds][habit.id];
           if (habit.type === 'boolean') { if (isHabitLoggedOnDay(habit, ds)) yVal++; }
-          else { yVal += Number(entry || 0); }
+          else { 
+            const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
+            yVal += Number(val); 
+          }
         }
       });
       bars.push({ val: yVal, label: String(y), isToday: y === new Date().getFullYear(), scheduled: true });
@@ -1448,14 +1461,17 @@ function renderRepsChart(container, habit, period) {
   container.appendChild(selRow);
 }
 
-
 // ─── ACTION SHEET LOGIC ─────────────────────────────────────────
 function openActionSheet(habit) {
   actionSheetHabit = habit;
   const isSkipped = isHabitSkippedOnDay(habit, selectedDate);
+  const isPaused = habit.paused || false;
+  
   document.getElementById('action-sheet-emoji').textContent = habit.emoji;
   document.getElementById('action-sheet-title').textContent = habit.name;
   document.getElementById('btn-skip-text').textContent = isSkipped ? 'Ripristina record' : 'Salta record per oggi';
+  document.getElementById('btn-pause-text').textContent = isPaused ? 'Riprendi abitudine' : 'Sospendi abitudine';
+  
   document.getElementById('action-sheet').classList.remove('hidden');
 }
 
@@ -1501,6 +1517,17 @@ document.getElementById('btn-action-delete').addEventListener('click', async () 
      await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', h.id));
      toast('Abitudine eliminata');
   }
+  closeActionSheet();
+});
+
+document.getElementById('btn-action-pause').addEventListener('click', async () => {
+  const h = actionSheetHabit;
+  if (!h) return;
+  const isPaused = h.paused || false;
+  await updateDoc(doc(db, 'users', currentUser.uid, 'habits', h.id), {
+     paused: !isPaused
+  });
+  toast(isPaused ? 'Abitudine ripresa' : 'Abitudine sospesa');
   closeActionSheet();
 });
 
