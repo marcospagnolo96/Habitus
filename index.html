@@ -110,7 +110,7 @@
     </main>
   </div>
 
-  <!-- STATS VIEW (Posizionato prima del nav per il rendering corretto z-index su Mobile) -->
+  <!-- STATS VIEW -->
   <div id="stats-view" class="app-view overlay-view">
     <div class="overlay-header">
       <button class="back-btn hidden" id="stats-back">
@@ -258,38 +258,38 @@
   </div>
 </div>
 
-<!-- FIREBASE SDK -->
-<script type="module" src="firebase-config.js"></script>
-  <!-- ACTION SHEET (Context Menu rapido) -->
-  <div id="action-sheet" class="modal hidden">
-    <div class="modal-backdrop"></div>
-    <div class="action-sheet-content">
-      <div class="action-sheet-header">
-        <span id="action-sheet-emoji"></span>
-        <span id="action-sheet-title"></span>
-      </div>
-      <div class="action-sheet-btns">
-        <button class="action-btn" id="btn-action-edit">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Modifica abitudine
-        </button>
-        <button class="action-btn" id="btn-action-note">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Aggiungi nota
-        </button>
-        <button class="action-btn" id="btn-action-skip">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-          <span id="btn-skip-text">Salta record per oggi</span>
-        </button>
-        <button class="action-btn danger" id="btn-action-delete">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          Elimina abitudine
-        </button>
-      </div>
-      <button class="btn-secondary" style="width:100%;" id="action-sheet-close">Chiudi</button>
+<!-- ACTION SHEET (Context Menu rapido) -->
+<div id="action-sheet" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-sheet">
+    <div class="action-sheet-header">
+      <span id="action-sheet-emoji"></span>
+      <span id="action-sheet-title"></span>
     </div>
+    <div class="action-sheet-btns">
+      <button class="action-btn" id="btn-action-edit">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Modifica abitudine
+      </button>
+      <button class="action-btn" id="btn-action-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Aggiungi nota
+      </button>
+      <button class="action-btn" id="btn-action-skip">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        <span id="btn-skip-text">Salta record per oggi</span>
+      </button>
+      <button class="action-btn danger" id="btn-action-delete">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        Elimina abitudine
+      </button>
+    </div>
+    <button class="btn-secondary" style="width:100%;" id="action-sheet-close">Chiudi</button>
   </div>
+</div>
 
-  <script type="module" src="app.js"></script>
+<!-- SCRIPTS -->
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

@@ -841,7 +841,7 @@ input::placeholder { color: var(--text3); }
 /* ─── MODAL ──────────────────────────────────────────────────── */
 .modal {
   position: fixed; inset: 0;
-  z-index: 300;
+  z-index: 10001;
   display: flex; align-items: flex-end; justify-content: center;
 }
 .modal.hidden { display: none; }
@@ -1035,6 +1035,68 @@ input::placeholder { color: var(--text3); }
 /* ─── UTILITIES ──────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
+/* ─── ACTION SHEET ────────────────────────────────────────────── */
+.action-sheet-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+}
+#action-sheet-emoji { font-size: 1.8rem; }
+#action-sheet-title { font-size: 1.2rem; font-weight: 600; font-family: var(--font-display); }
+
+.action-sheet-btns {
+  display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px;
+}
+.action-btn {
+  display: flex; align-items: center; gap: 16px;
+  width: 100%; padding: 18px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 16px; color: var(--text);
+  font-family: var(--font-body); font-size: 1.05rem; font-weight: 500;
+  cursor: pointer; transition: background 0.2s;
+}
+.action-btn:active { background: var(--bg); }
+.action-btn.danger { color: #f87171; border-color: rgba(248,113,113,0.15); }
+.action-btn svg { stroke: currentColor; opacity: 0.7; }
+
+/* Indicatore Saltato sulla scheda */
+.habit-card.skipped {
+  opacity: 0.6; filter: grayscale(0.5);
+}
+.habit-card.skipped::after {
+  content: 'SALTATO';
+  position: absolute; top: 12px; right: 60px;
+  font-size: 0.6rem; letter-spacing: 0.05em; font-weight: 800;
+  background: var(--bg3); color: var(--text3);
+  padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* ─── NOTES SECTION IN STATS ────────────────────────────────── */
+.stats-notes-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.notes-list {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-top: 16px;
+}
+.note-item {
+  background: var(--bg2);
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+}
+.note-date {
+  font-size: 0.7rem; color: var(--text2); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.note-text {
+  font-size: 0.95rem; line-height: 1.5; color: var(--text);
+}
+.note-empty {
+  text-align: center; color: var(--text3); font-size: 0.9rem; padding: 20px;
+}
+
 .toast {
   position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%);
   background: var(--bg3);
@@ -1042,7 +1104,7 @@ input::placeholder { color: var(--text3); }
   color: var(--text);
   padding: 10px 20px; border-radius: 20px;
   font-size: 0.9rem; font-weight: 500;
-  z-index: 500; white-space: nowrap;
+  z-index: 20000; white-space: nowrap;
   animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
 }
 @keyframes toastIn  { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
