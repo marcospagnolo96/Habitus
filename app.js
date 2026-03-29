@@ -1142,7 +1142,7 @@ document.addEventListener('touchend', e => {
   if (Math.abs(diffY) > Math.abs(diffX)) return;
   
   const target = e.target;
-  const ignoreSelectors = ['.date-strip', '.date-strip-wrapper', '.reps-chart-wrap', '.dash-heatmap', '.ical-grid'];
+  const ignoreSelectors = ['.date-strip', '.date-strip-wrapper', '.reps-chart-wrap', '.dash-heatmap', '.ical-grid', '.stats-habit-selector', '.stat-grid'];
   if (ignoreSelectors.some(s => target.closest(s))) return;
 
   const threshold = 70;
