@@ -607,23 +607,23 @@ input::placeholder { color: var(--text3); }
 
 /* ── SMALL YEAR NAV FOR CHART ── */
 .reps-header {
-  display: flex; justify-content: flex-end; margin-bottom: 8px;
+  display: flex; justify-content: center; margin-bottom: 12px;
 }
 .stats-year-nav-sm {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 16px;
   background: var(--bg2); border: 1px solid var(--border);
-  padding: 4px 8px; border-radius: 8px;
+  padding: 6px 14px; border-radius: 10px;
 }
 .yr-btn-sm {
   background: var(--bg3); border: none; color: var(--text2);
-  width: 26px; height: 26px; border-radius: 6px;
+  width: 28px; height: 28px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all 0.2s;
 }
 .yr-btn-sm:active { transform: scale(0.9); }
 .yr-label-sm {
-  font-size: 0.95rem; font-weight: 600; color: var(--text);
-  min-width: 45px; text-align: center;
+  font-size: 1.05rem; font-weight: 600; color: var(--text);
+  min-width: 50px; text-align: center;
 }
 
 /* ─── INTERACTIVE CALENDAR ─────────────────────────────────────── */
@@ -743,12 +743,12 @@ input::placeholder { color: var(--text3); }
 }
 
 .reps-chart-wrap {
-  display: flex; align-items: flex-end;
+  display: flex; align-items: flex-end; justify-content: center;
   gap: 6px;
   height: 130px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 0 4px 8px;
+  padding: 0 8px 8px;
 }
 .reps-chart-wrap::-webkit-scrollbar { display: none; }
 
