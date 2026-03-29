@@ -1036,22 +1036,23 @@ function renderStats(habitId) {
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
 
-  // Determine start date (createdAt or 1 year fallback)
-  let start = new Date();
-  start.setDate(start.getDate() - 365);
-  if (habit.createdAt) {
-    const ca = (typeof habit.createdAt.toDate === 'function') ? habit.createdAt.toDate() : new Date(habit.createdAt);
-    if (!isNaN(ca.getTime())) start = ca;
+  // Find the first time the habit was actually done
+  let start = new Date(today); 
+  const completedDates = Object.keys(logs).filter(ds => isHabitLoggedOnDay(habit, ds)).sort();
+  if (completedDates.length > 0) {
+    start = new Date(completedDates[0] + 'T12:00:00');
   }
   start.setHours(0, 0, 0, 0);
 
+  const todayDs = dateStr(today);
+  const startDs = dateStr(start);
   const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
 
   for (let i = diffDays; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const ds = dateStr(d);
-    if (ds < dateStr(start)) continue; 
+    if (ds < startDs) continue; 
     
     if (!habitScheduledFor(habit, ds)) continue;
     totalDays++;
