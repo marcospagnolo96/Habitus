@@ -1206,10 +1206,12 @@ function renderRepsChart(container, habit, period) {
     <span class="yr-label-sm">${statsViewYear}</span>
     <button class="yr-btn-sm" id="yr-next-chart"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
   `;
-  chartHeader.appendChild(yrNav);
-  container.appendChild(chartHeader);
-  document.getElementById('yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
-  document.getElementById('yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
+  if (period !== 'year') {
+    container.appendChild(chartHeader);
+    chartHeader.appendChild(yrNav);
+    chartHeader.querySelector('#yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
+    chartHeader.querySelector('#yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
+  }
 
   let bars = [];
   const todayDs = todayStr();
