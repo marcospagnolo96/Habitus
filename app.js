@@ -378,7 +378,7 @@ function renderHabits() {
   }
   emptyState.classList.add('hidden');
 
-  todayHabits.forEach(habit => {
+  hFiltered.forEach(habit => {
     const card = buildHabitCard(habit);
     container.appendChild(card);
   });
