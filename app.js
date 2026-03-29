@@ -350,7 +350,20 @@ function subscribeLogs() {
            const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
            if (detailVisible) {
              console.log("Aggiornamento stats per:", statsHabitId);
-             renderStats(statsHabitId);
+             
+             // Estraiamo il mese/anno visualizzati per non resettare il calendario
+             const icalTitle = document.querySelector('.ical-title');
+             let vYear = null, vMonth = null;
+             if (icalTitle) {
+               const parts = icalTitle.textContent.split(' ');
+               if (parts.length === 2) {
+                 const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                                     'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+                 vMonth = monthNames.indexOf(parts[0]);
+                 vYear = parseInt(parts[1]);
+               }
+             }
+             renderStats(statsHabitId, vYear, vMonth);
            }
         }
       } catch (err) {
@@ -614,6 +627,22 @@ async function toggleBoolean(habit, targetDate = selectedDate) {
     if (btn) btn.classList.toggle('done', newVal);
   }
 
+  // Se siamo nel dettaglio stats, aggiorniamo visivamente la cella del calendario immediatamente
+  const calCell = document.querySelector(`.ical-cell[data-date="${targetDate}"]`);
+  if (calCell && habit.type === 'boolean') {
+    calCell.classList.toggle('ical-done', newVal);
+    // Aggiungi/Rimuovi la spunta
+    let check = calCell.querySelector('.ical-check');
+    if (newVal && !check) {
+      check = document.createElement('span');
+      check.className = 'ical-check';
+      check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+      calCell.appendChild(check);
+    } else if (!newVal && check) {
+      check.remove();
+    }
+  }
+
   await saveLog(habit.id, newVal, targetDate);
   if (newVal && targetDate === todayStr()) toast(`${habit.emoji} ${habit.name} completata!`);
 }
@@ -650,14 +679,27 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
     }
     
     // Dashboard (heatmaps home) e stats dashboard (heatmaps stats)
-    renderDashboard(); 
+    if (typeof renderDashboard === 'function') renderDashboard(); 
     renderStatsDashboard(); 
     
     // Aggiorna sempre le stats se la detail view è aperta (coerenza globale)
     const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
     if (detailVisible && statsHabitId) {
-      console.log("Refresh dettaglio stats per", statsHabitId);
-      renderStats(statsHabitId);
+      // Recuperiamo il mese/anno attualmente visualizzati nel calendario se presente
+      const icalTitle = document.querySelector('.ical-title');
+      let vYear = null, vMonth = null;
+      if (icalTitle) {
+        // Formato: "Mese Anno" (es. "Marzo 2024")
+        const parts = icalTitle.textContent.split(' ');
+        if (parts.length === 2) {
+          const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                              'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+          vMonth = monthNames.indexOf(parts[0]);
+          vYear = parseInt(parts[1]);
+        }
+      }
+      console.log("Refresh dettaglio stats per", statsHabitId, "Mese:", vMonth, "Anno:", vYear);
+      renderStats(statsHabitId, vYear, vMonth);
     }
   } catch (e) {
     console.warn("Errore durante refresh ottimistico:", e);
@@ -667,14 +709,14 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
 }
 
 // ─── LOG MODAL ───────────────────────────────────────────────────
-function openLogModal(habit) {
+function openLogModal(habit, targetDate = selectedDate) {
   logModalHabit = habit;
   document.getElementById('log-modal-title').textContent = `${habit.emoji} ${habit.name}`;
   const body = document.getElementById('log-modal-body');
   body.innerHTML = '';
 
   if (habit.type === 'number') {
-    const current = Number((logs[selectedDate] || {})[habit.id] || 0);
+    const current = Number((logs[targetDate] || {})[habit.id] || 0);
     let val = current;
     const wrap = document.createElement('div');
     wrap.className = 'log-number-wrap';
@@ -691,7 +733,7 @@ function openLogModal(habit) {
     saveBtn.className = 'btn-primary'; saveBtn.textContent = 'Salva';
     saveBtn.addEventListener('click', async () => {
       val = Number(document.getElementById('log-num-val').value) || 0;
-      await saveLog(habit.id, val);
+      await saveLog(habit.id, val, targetDate);
       closeLogModal();
       toast(`${habit.emoji} Salvato: ${val} ${habit.unit || ''}`);
     });
@@ -709,7 +751,7 @@ function openLogModal(habit) {
     });
 
   } else if (habit.type === 'timer') {
-    logTimerElapsed = Number((logs[selectedDate] || {})[habit.id] || 0);
+    logTimerElapsed = Number((logs[targetDate] || {})[habit.id] || 0);
     logTimerRunning = false;
     logTimerStart = null;
     if (logTimerInterval) clearInterval(logTimerInterval);
@@ -734,7 +776,7 @@ function openLogModal(habit) {
     saveBtn.textContent = 'Salva tempo';
     saveBtn.addEventListener('click', async () => {
       if (logTimerRunning) stopLogTimer();
-      await saveLog(habit.id, logTimerElapsed);
+      await saveLog(habit.id, logTimerElapsed, targetDate);
       closeLogModal();
       toast(`${habit.emoji} ${fmtTime(logTimerElapsed)} salvati!`);
     });
@@ -1189,7 +1231,7 @@ function openHabitDetail(habitId) {
   
   statsHabitId = habitId;
   buildHabitChips();
-  renderStats(habitId);
+  renderStats(habitId); // All'apertura del dettaglio usiamo pure il mese corrente
 }
 
 document.getElementById('stats-back').addEventListener('click', () => {
@@ -1210,13 +1252,14 @@ function buildHabitChips() {
       document.querySelectorAll('.stats-habit-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       statsHabitId = h.id;
-      renderStats(h.id);
+      // Quando cambiamo habit dal selettore "chips", resettiamo pure al mese corrente per default
+      renderStats(h.id); 
     });
     sel.appendChild(chip);
   });
 }
 
-function renderStats(habitId) {
+function renderStats(habitId, viewYear, viewMonth) {
   const habit = habits.find(h => h.id === habitId);
   if (!habit) return;
   const content = document.getElementById('stats-content');
@@ -1287,7 +1330,7 @@ function renderStats(habitId) {
 
   const calWrap = document.createElement('div');
   calWrap.className = 'stats-cal-section';
-  renderInteractiveCalendar(calWrap, habit);
+  renderInteractiveCalendar(calWrap, habit, viewYear, viewMonth);
   content.appendChild(calWrap);
 
   const chartSection = document.createElement('div');
@@ -1352,6 +1395,7 @@ function renderInteractiveCalendar(container, habit, year, month) {
   for (let i = 1; i <= daysInMonth; i++) {
     const ds = `${cy}-${String(cm+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
     const cell = document.createElement('div');
+    cell.dataset.date = ds;
     const scheduled = habitScheduledFor(habit, ds);
     const done = scheduled && isHabitLoggedOnDay(habit, ds);
     const future = ds > todayDs;
@@ -1370,17 +1414,12 @@ function renderInteractiveCalendar(container, habit, year, month) {
       cell.classList.add('ical-clickable');
       cell.addEventListener('click', async () => {
         await toggleBoolean(habit, ds);
-        renderInteractiveCalendar(container, habit, cy, cm);
-        renderHabits();
-        buildDateStrip();
+        // La saveLog chiamerà renderStats preservando il mese corrente (cy, cm)
       });
     } else if (scheduled && !future && (habit.type === 'number' || habit.type === 'timer')) {
       cell.classList.add('ical-clickable');
       cell.addEventListener('click', () => {
-        const prev = selectedDate;
-        selectedDate = ds;
-        openLogModal(habit);
-        selectedDate = prev;
+        openLogModal(habit, ds);
       });
     }
     grid.appendChild(cell);
