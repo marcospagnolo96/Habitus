@@ -143,20 +143,36 @@ function habitScheduledFor(habit, dateString) {
   }
 }
 function isHabitLoggedOnDay(habit, ds) {
-  const entry = (logs[ds] || {})[habit.id];
-  if (typeof entry === 'object' && entry !== null) return !!entry.val;
+  const dayLogs = logs[ds];
+  if (!dayLogs) return false;
+  const entry = dayLogs[habit.id];
+  if (entry === undefined || entry === null) return false;
+  
+  // Se è un oggetto, controlliamo se c'è un valore o se è saltato
+  if (typeof entry === 'object') {
+    if (entry.skip) return false;
+    return entry.val !== undefined && entry.val !== null && entry.val !== false && entry.val !== 0;
+  }
+  // Se è primitivo
   return !!entry;
 }
 
 function isHabitDayGoalMet(habit, ds) {
-  const entry = (logs[ds] || {})[habit.id];
-  const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
-  const skip = (typeof entry === 'object' && entry !== null) ? entry.skip : false;
+  const dayLogs = logs[ds];
+  if (!dayLogs) return false;
+  const entry = dayLogs[habit.id];
+  if (entry === undefined || entry === null) return false;
+
+  const val = (typeof entry === 'object') ? entry.val : entry;
+  const skip = (typeof entry === 'object') ? entry.skip : false;
   if (skip) return false;
 
-  if (habit.type === 'boolean') return val === true;
+  if (habit.type === 'boolean') return !!val;
   if (habit.type === 'number') return Number(val || 0) >= (habit.goal || 1);
-  if (habit.type === 'timer') return Number(val || 0) >= (habit.duration || 0) * 60;
+  if (habit.type === 'timer') {
+    const target = (habit.duration || 0) * 60;
+    return target > 0 ? Number(val || 0) >= target : Number(val || 0) > 0;
+  }
   return false;
 }
 
@@ -402,7 +418,8 @@ function buildHabitCard(habit) {
   card.dataset.id = habit.id;
 
   const isSkipped = isHabitSkippedOnDay(habit, selectedDate);
-  const done = isHabitDone(habit, selectedDate);
+  const doneToday = isHabitDayGoalMet(habit, selectedDate);
+  const doneGlobal = isHabitDone(habit, selectedDate);
   const entry = (logs[selectedDate] || {})[habit.id];
   const streak = computeStreak(habit);
 
@@ -458,7 +475,7 @@ function buildHabitCard(habit) {
 
   if (habit.type === 'boolean') {
     const btn = document.createElement('button');
-    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    btn.className = 'circle-action-btn' + (doneToday ? ' done' : '');
     btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
     btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
@@ -471,7 +488,7 @@ function buildHabitCard(habit) {
   } else if (habit.type === 'number') {
     const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
     const btn = document.createElement('button');
-    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    btn.className = 'circle-action-btn' + (doneToday ? ' done' : '');
     
     let fSize = '1.1rem';
     let displayVal = val;
@@ -490,7 +507,7 @@ function buildHabitCard(habit) {
   } else if (habit.type === 'timer') {
     const elapsed = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
     const btn = document.createElement('button');
-    btn.className = 'circle-action-btn' + (done ? ' done' : '');
+    btn.className = 'circle-action-btn' + (doneToday ? ' done' : '');
     btn.innerHTML = `<span style="font-size: 0.8rem">${fmtTime(elapsed)}</span>`;
     btn.style.setProperty('--habit-color', habit.color || 'var(--accent)');
     if (isFuture) {
@@ -553,9 +570,15 @@ function updateProgress() {
 }
 
 async function toggleBoolean(habit) {
-  const entry = (logs[selectedDate] || {})[habit.id];
+  const dayLogs = logs[selectedDate] || {};
+  const entry = dayLogs[habit.id];
   const currentVal = (typeof entry === 'object' && entry !== null) ? !!entry.val : !!entry;
   const newVal = !currentVal;
+  
+  // Feedback immediato per UI reattiva
+  const btn = document.querySelector(`.habit-card[data-id="${habit.id}"] .circle-action-btn`);
+  if (btn) btn.classList.toggle('done', newVal);
+
   await saveLog(habit.id, newVal);
   if (newVal) toast(`${habit.emoji} ${habit.name} completata!`);
 }
