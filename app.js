@@ -39,6 +39,7 @@ let statsViewYear = new Date().getFullYear();
 let currentChartPeriod = 'week';
 let unsubHabits = null;
 let unsubLogs = null;
+let actionSheetHabit = null;
 
 // ─── THEME HANDLING ─────────────────────────────────────────────
 const btnThemeToggle = document.getElementById('btn-theme-toggle');
@@ -146,10 +147,27 @@ function habitScheduledFor(habit, dateString) {
 function isHabitLoggedOnDay(habit, dateString) {
   const entry = (logs[dateString] || {})[habit.id];
   if (entry === undefined || entry === null) return false;
-  if (habit.type === 'boolean') return entry === true;
-  if (habit.type === 'number')  return Number(entry) >= Number(habit.goal || 1);
-  if (habit.type === 'timer')   return Number(entry) >= Number(habit.duration || 1) * 60;
+
+  // Gestione struttura oggetto { val, skip, note }
+  const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
+  const skip = (typeof entry === 'object' && entry !== null) ? entry.skip : false;
+
+  if (skip) return false; // I giorni saltati non contano come completati
+
+  if (habit.type === 'boolean') return val === true;
+  if (habit.type === 'number')  return Number(val) >= Number(habit.goal || 1);
+  if (habit.type === 'timer')   return Number(val) >= Number(habit.duration || 1) * 60;
   return false;
+}
+
+function isHabitSkippedOnDay(habit, dateString) {
+  const entry = (logs[dateString] || {})[habit.id];
+  return (typeof entry === 'object' && entry !== null && entry.skip === true);
+}
+
+function getHabitNoteOnDay(habit, dateString) {
+  const entry = (logs[dateString] || {})[habit.id];
+  return (typeof entry === 'object' && entry !== null) ? (entry.note || '') : '';
 }
 
 function checkWeeklyGoalMet(habit, dateString) {
@@ -370,9 +388,12 @@ function buildHabitCard(habit) {
   card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
   card.dataset.id = habit.id;
 
+  const isSkipped = isHabitSkippedOnDay(habit, selectedDate);
   const done = isHabitDone(habit, selectedDate);
   const entry = (logs[selectedDate] || {})[habit.id];
   const streak = computeStreak(habit);
+
+  if (isSkipped) card.classList.add('skipped');
 
   // Emoji
   const emojiEl = document.createElement('div');
@@ -471,12 +492,17 @@ function buildHabitCard(habit) {
   card.appendChild(leds);
   card.appendChild(action);
 
-  // Long press → edit
+  // Long press → Azioni (Action Sheet)
   let pressTimer;
-  card.addEventListener('touchstart', () => { pressTimer = setTimeout(() => openHabitModal(habit), 600); });
+  const longPressHandler = () => {
+    // Vibrazione se supportata
+    if (navigator.vibrate) navigator.vibrate(50);
+    openActionSheet(habit);
+  };
+  card.addEventListener('touchstart', () => { pressTimer = setTimeout(longPressHandler, 600); });
   card.addEventListener('touchend', () => clearTimeout(pressTimer));
   card.addEventListener('touchmove', () => clearTimeout(pressTimer));
-  card.addEventListener('mousedown', () => { pressTimer = setTimeout(() => openHabitModal(habit), 600); });
+  card.addEventListener('mousedown', () => { pressTimer = setTimeout(longPressHandler, 600); });
   card.addEventListener('mouseup', () => clearTimeout(pressTimer));
 
   return card;
@@ -521,10 +547,27 @@ async function toggleBoolean(habit) {
 }
 
 // ─── SAVE LOG ────────────────────────────────────────────────────
-async function saveLog(habitId, value) {
+async function saveLog(habitId, valueOrUpdate) {
   const logRef = doc(db, 'users', currentUser.uid, 'logs', selectedDate);
   const existing = logs[selectedDate] || {};
-  await setDoc(logRef, { ...existing, [habitId]: value }, { merge: true });
+  const currentEntry = existing[habitId];
+
+  let newEntry;
+  if (typeof valueOrUpdate === 'object' && valueOrUpdate !== null) {
+    // Se è un oggetto, uniamo con l'esistente (convertendolo in oggetto se era primitivo)
+    const base = (typeof currentEntry === 'object' && currentEntry !== null) 
+                 ? currentEntry : { val: currentEntry };
+    newEntry = { ...base, ...valueOrUpdate };
+  } else {
+    // Se è un valore semplice, aggiorniamo 'val' preservando gli altri campi se presenti
+    if (typeof currentEntry === 'object' && currentEntry !== null) {
+      newEntry = { ...currentEntry, val: valueOrUpdate };
+    } else {
+      newEntry = valueOrUpdate; // Resta primitivo se lo era
+    }
+  }
+
+  await setDoc(logRef, { ...existing, [habitId]: newEntry }, { merge: true });
 }
 
 // ─── LOG MODAL ───────────────────────────────────────────────────
@@ -860,7 +903,8 @@ function computeStreak(habit) {
       const ds = dateStr(d);
       if (!habitScheduledFor(habit, ds)) continue;
       if (isHabitLoggedOnDay(habit, ds)) streak++;
-      else if (i > 0) break; // Allow today to be incomplete
+      else if (isHabitSkippedOnDay(habit, ds)) continue; // Salta il giorno senza rompere lo streak
+      else if (i > 0) break; // Consenti a oggi di essere incompleto
       else continue;
     }
   }
@@ -905,6 +949,7 @@ function computeBestStreak(habit) {
       const ds = dateStr(d);
       if (!habitScheduledFor(habit, ds)) continue;
       if (isHabitLoggedOnDay(habit, ds)) { curS++; if (curS > maxS) maxS = curS; }
+      else if (isHabitSkippedOnDay(habit, ds)) continue; // Ignora nello streak ma non azzera
       else curS = 0;
     }
     return maxS;
@@ -1247,6 +1292,46 @@ function renderInteractiveCalendar(container, habit, year, month) {
     grid.appendChild(cell);
   }
   container.appendChild(grid);
+  renderHabitNotes(container, habit, cy, cm);
+}
+
+function renderHabitNotes(container, habit, year, month) {
+  const notesSection = document.createElement('div');
+  notesSection.className = 'stats-notes-section';
+  notesSection.innerHTML = '<div class="section-title">Note del mese</div>';
+  
+  const list = document.createElement('div');
+  list.className = 'notes-list';
+  
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let hasNotes = false;
+  
+  const mNamesShort = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    const entry = (logs[ds] || {})[habit.id];
+    if (typeof entry === 'object' && entry !== null && entry.note) {
+      hasNotes = true;
+      const item = document.createElement('div');
+      item.className = 'note-item';
+      item.innerHTML = `
+        <div class="note-date">${i} ${mNamesShort[month]} ${year}</div>
+        <div class="note-text">${entry.note}</div>
+      `;
+      list.appendChild(item);
+    }
+  }
+  
+  if (!hasNotes) {
+    const empty = document.createElement('div');
+    empty.className = 'note-empty';
+    empty.textContent = 'Nessuna nota per questo mese.';
+    list.appendChild(empty);
+  }
+  
+  notesSection.appendChild(list);
+  container.appendChild(notesSection);
 }
 
 function renderRepsChart(container, habit, period) {
@@ -1362,6 +1447,62 @@ function renderRepsChart(container, habit, period) {
   selRow.appendChild(btnRow);
   container.appendChild(selRow);
 }
+
+
+// ─── ACTION SHEET LOGIC ─────────────────────────────────────────
+function openActionSheet(habit) {
+  actionSheetHabit = habit;
+  const isSkipped = isHabitSkippedOnDay(habit, selectedDate);
+  document.getElementById('action-sheet-emoji').textContent = habit.emoji;
+  document.getElementById('action-sheet-title').textContent = habit.name;
+  document.getElementById('btn-skip-text').textContent = isSkipped ? 'Ripristina record' : 'Salta record per oggi';
+  document.getElementById('action-sheet').classList.remove('hidden');
+}
+
+function closeActionSheet() {
+  document.getElementById('action-sheet').classList.add('hidden');
+  actionSheetHabit = null;
+}
+
+document.getElementById('action-sheet-close').addEventListener('click', closeActionSheet);
+document.getElementById('action-sheet').querySelector('.modal-backdrop').addEventListener('click', closeActionSheet);
+
+document.getElementById('btn-action-edit').addEventListener('click', () => {
+  const h = actionSheetHabit;
+  closeActionSheet();
+  if (h) openHabitModal(h);
+});
+
+document.getElementById('btn-action-note').addEventListener('click', async () => {
+  const h = actionSheetHabit;
+  if (!h) return;
+  const currentNote = getHabitNoteOnDay(h, selectedDate);
+  const note = prompt('Aggiungi una nota per oggi:', currentNote);
+  if (note !== null) {
+     await saveLog(h.id, { note: note.trim() });
+     toast('Nota salvata!');
+  }
+  closeActionSheet();
+});
+
+document.getElementById('btn-action-skip').addEventListener('click', async () => {
+  const h = actionSheetHabit;
+  if (!h) return;
+  const isSkipped = isHabitSkippedOnDay(h, selectedDate);
+  await saveLog(h.id, { skip: !isSkipped });
+  toast(isSkipped ? 'Record ripristinato' : 'Giorno saltato (serie salvata)');
+  closeActionSheet();
+});
+
+document.getElementById('btn-action-delete').addEventListener('click', async () => {
+  const h = actionSheetHabit;
+  if (!h) return;
+  if (confirm(`Eliminare definitivamente "${h.name}"?`)) {
+     await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', h.id));
+     toast('Abitudine eliminata');
+  }
+  closeActionSheet();
+});
 
 // ─── PWA SERVICE WORKER ──────────────────────────────────────────
 if ('serviceWorker' in navigator) {
