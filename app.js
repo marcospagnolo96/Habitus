@@ -761,15 +761,14 @@ function openLogModal(habit, targetDate = selectedDate) {
     wrap.className = 'timer-log-wrap';
     const minElapsed = Math.floor(logTimerElapsed / 60);
     wrap.innerHTML = `
-      <div class="timer-log-display" id="log-timer-disp">${fmtTime(logTimerElapsed)}</div>
+      <div class="log-number-display" style="align-items:center;">
+        <input type="number" id="log-timer-val" value="${minElapsed}" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
+        <span class="log-number-unit" style="margin-left:12px;">min</span>
+      </div>
+      <div class="timer-log-display" id="log-timer-disp" style="font-size: 1.2rem; opacity: 0.6; margin-top: -10px;">${fmtTime(logTimerElapsed)}</div>
       <div class="timer-controls">
         <button class="timer-ctrl-btn primary" id="log-timer-toggle">▶ Avvia</button>
         <button class="timer-ctrl-btn" id="log-timer-reset">↺ Reset</button>
-      </div>
-      <div class="timer-manual-wrap">
-         <button class="action-btn-close" id="action-sheet-close"></button>
-         <label style="font-size:0.8rem; color:var(--text2);">Minuti (manuale):</label>
-         <input type="number" id="manual-mins" placeholder="es. 30" style="background:var(--bg3); color:var(--text); font-size:1.1rem; width:70px; border:1px solid var(--border); border-radius:8px; padding:6px; text-align:center;" min="0" value="${minElapsed > 0 ? minElapsed : ''}" />
       </div>`;
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn-primary'; saveBtn.style.marginTop = '16px';
@@ -790,9 +789,9 @@ function openLogModal(habit, targetDate = selectedDate) {
       stopLogTimer();
       logTimerElapsed = 0;
       document.getElementById('log-timer-disp').textContent = fmtTime(0);
-      document.getElementById('manual-mins').value = '';
+      document.getElementById('log-timer-val').value = 0;
     });
-    document.getElementById('manual-mins').addEventListener('input', e => {
+    document.getElementById('log-timer-val').addEventListener('input', e => {
       const m = Number(e.target.value);
       if (m >= 0) {
          logTimerElapsed = m * 60;
@@ -811,7 +810,11 @@ function startLogTimer() {
   logTimerInterval = setInterval(() => {
     logTimerElapsed = Math.floor((Date.now() - logTimerStart) / 1000);
     const disp = document.getElementById('log-timer-disp');
+    const valInput = document.getElementById('log-timer-val');
     if (disp) disp.textContent = fmtTime(logTimerElapsed);
+    if (valInput && document.activeElement !== valInput) {
+      valInput.value = Math.floor(logTimerElapsed / 60);
+    }
   }, 500);
 }
 function stopLogTimer() {
