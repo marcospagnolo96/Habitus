@@ -646,14 +646,17 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
       updateProgress();
     }
     
-    // Dashboard e stats generali sempre aggiornate
+    // Dashboard (heatmaps home) e stats dashboard (heatmaps stats)
     renderDashboard(); 
     renderStatsDashboard(); 
     
-    // Aggiorna anche le stats se aperte (fondamentale per il calendario interattivo)
-    if (statsHabitId) {
+    // Aggiorna il dettaglio statistico se stiamo guardando questa abitudine
+    if (statsHabitId === habitId) {
       const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
-      if (detailVisible) renderStats(statsHabitId);
+      if (detailVisible) {
+        console.log("Refresh dettaglio stats per", habitId);
+        renderStats(habitId);
+      }
     }
   } catch (e) {
     console.warn("Errore durante refresh ottimistico:", e);
