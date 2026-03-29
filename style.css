@@ -63,6 +63,51 @@ body {
 }
 .screen.active { display: flex; }
 
+/* ─── APP VIEWS TRANSITIONS ─────────────────────────────────────── */
+.app-view {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: var(--nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), 
+              opacity 0.35s ease, 
+              visibility 0.35s;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.app-view.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+  transform: translateX(0) !important;
+  z-index: 10;
+}
+
+#today-view {
+  transform: translateX(-30px);
+}
+
+#stats-view {
+  transform: translateX(30px);
+  z-index: 5;
+}
+
+/* Override old overlay-view logic to support transitions */
+.overlay-view {
+  display: flex !important;
+  position: absolute;
+  inset: 0;
+  bottom: var(--nav-h);
+  background: var(--bg);
+  flex-direction: column;
+  /* transition is handled by .app-view */
+}
+
 /* ─── AUTH ──────────────────────────────────────────────────── */
 #auth-screen {
   justify-content: flex-end;

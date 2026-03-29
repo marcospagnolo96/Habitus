@@ -916,10 +916,17 @@ function switchTab(tabKey) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === tabKey);
   });
+  
+  const todayView = document.getElementById('today-view');
+  const statsView = document.getElementById('stats-view');
+
   if (tabKey === 'stats') {
+    todayView.classList.remove('active');
+    statsView.classList.add('active');
     openStats();
   } else if (tabKey === 'today') {
-    document.getElementById('stats-view').classList.add('hidden');
+    statsView.classList.remove('active');
+    todayView.classList.add('active');
   }
 }
 
@@ -945,30 +952,30 @@ document.addEventListener('touchend', e => {
   const diffX = touchEndX - touchStartX;
   const diffY = touchEndY - touchStartY;
   
-  // Se lo swipe verticale è dominante, lo ignoriamo
   if (Math.abs(diffY) > Math.abs(diffX)) return;
   
-  // Ignoriamo lo swipe se avviene dentro aree a scorrimento orizzontale
   const target = e.target;
-  const ignoreSelectors = ['.date-strip-grid', '.reps-chart-wrap', '.dash-heatmap', '.ical-grid'];
+  const ignoreSelectors = ['.date-strip', '.date-strip-wrapper', '.reps-chart-wrap', '.dash-heatmap', '.ical-grid'];
   if (ignoreSelectors.some(s => target.closest(s))) return;
 
   const threshold = 70;
   if (diffX < -threshold) { 
-    // Swipe Sinistra -> Statistiche
-    const isStatsHidden = document.getElementById('stats-view').classList.contains('hidden');
-    if (isStatsHidden) switchTab('stats');
+    // Swipe Sinistra -> Statistiche (se oggi è attivo)
+    if (document.getElementById('today-view').classList.contains('active')) {
+      switchTab('stats');
+    }
   } else if (diffX > threshold) {
-    // Swipe Destra -> Oggi
-    const isStatsHidden = document.getElementById('stats-view').classList.contains('hidden');
-    if (!isStatsHidden) switchTab('today');
+    // Swipe Destra -> Oggi (se statistiche è attivo)
+    if (document.getElementById('stats-view').classList.contains('active')) {
+      switchTab('today');
+    }
   }
 }, { passive: true });
 
 // ─── STATS ───────────────────────────────────────────────────────
 function openStats() {
   const view = document.getElementById('stats-view');
-  view.classList.remove('hidden');
+  // Il toggle della vista ora è gestito da switchTab tramite .active
   document.getElementById('stats-dashboard').classList.remove('hidden');
   document.getElementById('stats-detail-view').classList.add('hidden');
   document.getElementById('stats-main-title').textContent = 'Statistiche';
