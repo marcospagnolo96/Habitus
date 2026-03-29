@@ -1601,7 +1601,9 @@ function renderRepsChart(container, habit, period) {
     if (b.val > 0 && habit.type !== 'boolean') { fill.title = String(b.val); }
     track.appendChild(fill);
     const valLbl = document.createElement('div'); valLbl.className = 'reps-bar-val';
-    if (b.val > 0) valLbl.textContent = b.val;
+    let dVal = b.val;
+    if (habit.type === 'timer') dVal = Math.floor(b.val / 60);
+    if (dVal > 0) valLbl.textContent = dVal;
     const lbl = document.createElement('div'); lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
     lbl.textContent = b.label;
     col.appendChild(valLbl); col.appendChild(track); col.appendChild(lbl);
@@ -1609,16 +1611,6 @@ function renderRepsChart(container, habit, period) {
   });
   container.appendChild(chartWrap);
   
-  // Scorrimento automatico al giorno corrente se presente
-  setTimeout(() => {
-    const active = chartWrap.querySelector('.today');
-    if (active) {
-      active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    } else {
-      // Se non c'è oggi (es. anno passato), scorri in fondo
-      chartWrap.scrollLeft = chartWrap.scrollWidth;
-    }
-  }, 100);
 
   const selRow = document.createElement('div');
   selRow.className = 'chart-period-row-bottom';
