@@ -193,7 +193,7 @@ function checkWeeklyGoalMet(habit, dateString) {
   let count = 0;
   for (let i = 0; i < 7; i++) {
      const cur = new Date(start); cur.setDate(start.getDate() + i);
-     if (isHabitLoggedOnDay(habit, dateStr(cur))) count++;
+     if (isHabitDayGoalMet(habit, dateStr(cur))) count++;
   }
   return count >= habit.freqN;
 }
@@ -206,7 +206,7 @@ function checkMonthlyGoalMet(habit, dateString) {
   let count = 0;
   for (let i = 1; i <= daysInMonth; i++) {
      const cur = new Date(year, month, i);
-     if (isHabitLoggedOnDay(habit, dateStr(cur))) count++;
+     if (isHabitDayGoalMet(habit, dateStr(cur))) count++;
   }
   let target = Math.round((habit.freqN / 31) * daysInMonth);
   if (target < 1) target = 1;
@@ -504,9 +504,9 @@ function buildHabitCard(habit) {
     d.setDate(todayD.getDate() - i);
     const ds = dateStr(d);
     const dot = document.createElement('div');
-    const isLogged = isHabitLoggedOnDay(habit, ds);
+    const isDone = isHabitDayGoalMet(habit, ds);
     const isSkipped = isHabitSkippedOnDay(habit, ds);
-    dot.className = 'led-dot' + (isLogged ? ' on' : '') + (isSkipped ? ' skip' : '');
+    dot.className = 'led-dot' + (isDone ? ' on' : '') + (isSkipped ? ' skip' : '');
     leds.appendChild(dot);
   }
 
@@ -1041,7 +1041,7 @@ function computeStreak(habit) {
       d.setDate(today.getDate() - i);
       const ds = dateStr(d);
       if (!habitScheduledFor(habit, ds)) continue;
-      if (isHabitLoggedOnDay(habit, ds)) streak++;
+      if (isHabitDayGoalMet(habit, ds)) streak++;
       else if (isHabitSkippedOnDay(habit, ds)) continue; // Salta il giorno senza rompere lo streak
       else if (i > 0) break; // Consenti a oggi di essere incompleto
       else continue;
@@ -1087,7 +1087,7 @@ function computeBestStreak(habit) {
       d.setDate(today.getDate() - i);
       const ds = dateStr(d);
       if (!habitScheduledFor(habit, ds)) continue;
-      if (isHabitLoggedOnDay(habit, ds)) { curS++; if (curS > maxS) maxS = curS; }
+      if (isHabitDayGoalMet(habit, ds)) { curS++; if (curS > maxS) maxS = curS; }
       else if (isHabitSkippedOnDay(habit, ds)) continue; // Ignora nello streak ma non azzera
       else curS = 0;
     }
@@ -1205,7 +1205,7 @@ function renderStatsDashboard() {
       const ds = dateStr(d);
       const rect = document.createElement('div');
       rect.className = 'dash-rect';
-      if (isHabitLoggedOnDay(habit, ds)) {
+      if (isHabitDayGoalMet(habit, ds)) {
         rect.classList.add('on');
       } else if (ds > todayStr()) {
         rect.classList.add('future');
@@ -1271,7 +1271,7 @@ function renderStats(habitId, viewYear, viewMonth) {
 
   // Find the first time the habit was actually done
   let start = new Date(today); 
-  const completedDates = Object.keys(logs).filter(ds => isHabitLoggedOnDay(habit, ds)).sort();
+  const completedDates = Object.keys(logs).filter(ds => isHabitDayGoalMet(habit, ds)).sort();
   if (completedDates.length > 0) {
     start = new Date(completedDates[0] + 'T12:00:00');
   }
@@ -1290,7 +1290,7 @@ function renderStats(habitId, viewYear, viewMonth) {
     if (!habitScheduledFor(habit, ds)) continue;
     totalDays++;
     const entry = (logs[ds] || {})[habit.id];
-    const done = isHabitLoggedOnDay(habit, ds);
+    const done = isHabitDayGoalMet(habit, ds);
     if (done) doneDays++;
     if (entry !== undefined && entry !== null && entry !== false) {
       if (habit.type === 'number' || habit.type === 'timer') {
@@ -1397,7 +1397,7 @@ function renderInteractiveCalendar(container, habit, year, month) {
     const cell = document.createElement('div');
     cell.dataset.date = ds;
     const scheduled = habitScheduledFor(habit, ds);
-    const done = scheduled && isHabitLoggedOnDay(habit, ds);
+    const done = scheduled && isHabitDayGoalMet(habit, ds);
     const future = ds > todayDs;
     cell.className = 'ical-cell' + (!scheduled ? ' ical-unscheduled' : '') + (done ? ' ical-done' : '') + (ds === todayDs ? ' ical-today' : '') + (future ? ' ical-future' : '');
     const numEl = document.createElement('span');
