@@ -1585,7 +1585,7 @@ function renderRepsChart(container, habit, period) {
         }
       });
       bars.push({ val: yVal, label: y, isToday: yearNum === new Date().getFullYear(), scheduled: true });
-    }
+    });
   }
 
   const chartWrap = document.createElement('div');
