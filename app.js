@@ -135,6 +135,149 @@ function initConnectionMonitor() {
   if (!navigator.onLine) setOffline();
 }
 
+// ─── DRAG & DROP RIORDINO ABITUDINI ──────────────────────────────
+// Salva su Firestore il nuovo ordine dopo un drag. Usa un campo numerico
+// 'order' su ogni documento abitudine. Write batch per atomicità.
+async function saveHabitsOrder(orderedIds) {
+  if (!currentUser) return;
+  const writes = orderedIds.map((id, i) =>
+    setDoc(doc(db, 'users', currentUser.uid, 'habits', id), { order: i }, { merge: true })
+  );
+  try {
+    await Promise.all(writes);
+  } catch (err) {
+    console.error('Errore salvataggio ordine:', err);
+    toast('⚠️ Impossibile salvare l\'ordine. Riprova.');
+  }
+}
+
+// Stato drag
+let dragState = null;
+// { habitId, originIndex, ghostEl, sourceCard,
+//   startY, lastY, cards[], container }
+
+function initDragOnCard(card, habit) {
+  // Handle visibile solo toccando l'emoji (drag handle)
+  const handle = card.querySelector('.habit-emoji');
+  if (!handle) return;
+
+  // ── Touch (mobile) ────────────────────────────────────────────
+  handle.addEventListener('touchstart', e => {
+    // Feedback tattile immediato
+    if (navigator.vibrate) navigator.vibrate(30);
+    startDrag(e.touches[0].clientY, card, habit);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend',  onDragEnd,  { passive: true  });
+
+  // ── Mouse (desktop) ───────────────────────────────────────────
+  handle.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    startDrag(e.clientY, card, habit);
+  });
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+}
+
+function startDrag(clientY, card, habit) {
+  const container = document.getElementById('habits-container');
+  const cards = Array.from(container.querySelectorAll('.habit-card:not(.paused-card)'));
+  const originIndex = cards.indexOf(card);
+  if (originIndex === -1) return;
+
+  // Clona la card come "ghost" flottante
+  const rect = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.style.cssText = `
+    position: fixed; left: ${rect.left}px; top: ${rect.top}px;
+    width: ${rect.width}px; z-index: 9000;
+    opacity: 0.92; pointer-events: none;
+    transform: scale(1.02) rotate(1deg);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+  `;
+  document.body.appendChild(ghost);
+
+  // Placeholder trasparente al posto della card originale
+  card.style.opacity = '0.25';
+  card.style.transition = 'none';
+
+  dragState = {
+    habitId: habit.id,
+    originIndex,
+    currentIndex: originIndex,
+    ghostEl: ghost,
+    sourceCard: card,
+    startY: clientY,
+    lastY: clientY,
+    cards,
+    container,
+    ghostTop: rect.top,
+  };
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const { ghostEl, ghostTop, startY, cards, sourceCard, container } = dragState;
+
+  // Muovi il ghost
+  const deltaY = clientY - startY;
+  ghostEl.style.top = (ghostTop + deltaY) + 'px';
+  dragState.lastY = clientY;
+
+  // Trova su quale card siamo passati sopra
+  const hoveredCard = cards.find(c => {
+    if (c === sourceCard) return false;
+    const r = c.getBoundingClientRect();
+    return clientY >= r.top && clientY <= r.bottom;
+  });
+
+  if (!hoveredCard) return;
+  const hoveredIndex = cards.indexOf(hoveredCard);
+  if (hoveredIndex === dragState.currentIndex) return;
+
+  // Riordina visivamente le card nel DOM
+  dragState.currentIndex = hoveredIndex;
+  const ref = hoveredIndex < cards.indexOf(sourceCard)
+    ? hoveredCard
+    : hoveredCard.nextSibling;
+  container.insertBefore(sourceCard, ref);
+  // Aggiorna l'array cards nell'ordine DOM corrente
+  dragState.cards = Array.from(container.querySelectorAll('.habit-card:not(.paused-card)'));
+}
+
+function onDragEnd() {
+  if (!dragState) return;
+  const { ghostEl, sourceCard, cards, habitId } = dragState;
+
+  // Rimuovi ghost e ripristina la card
+  ghostEl.remove();
+  sourceCard.style.opacity = '';
+  sourceCard.style.transition = '';
+
+  // Calcola il nuovo ordine dal DOM aggiornato
+  const finalCards = Array.from(
+    dragState.container.querySelectorAll('.habit-card:not(.paused-card)')
+  );
+  const orderedIds = finalCards.map(c => c.dataset.id);
+
+  // Aggiorna lo stato locale immediatamente (ottimistico)
+  const newHabits = orderedIds
+    .map(id => habits.find(h => h.id === id))
+    .filter(Boolean);
+  // Mantieni le abitudini sospese in fondo
+  const paused = habits.filter(h => h.paused);
+  habits = [...newHabits, ...paused];
+
+  dragState = null;
+
+  // Salva su Firestore
+  saveHabitsOrder(orderedIds);
+}
+
 // Should a habit appear today?
 function habitScheduledFor(habit, dateString) {
   const d = new Date(dateString + 'T12:00:00');
@@ -355,8 +498,16 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 // ─── FIRESTORE SUBSCRIPTIONS ─────────────────────────────────────
 function subscribeHabits() {
   const habitsRef = collection(db, 'users', currentUser.uid, 'habits');
-  unsubHabits = onSnapshot(query(habitsRef, orderBy('createdAt')), snap => {
-    habits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Ordiniamo lato client per supportare sia il campo 'order' (drag&drop)
+  // sia il fallback su 'createdAt' per abitudini più vecchie senza campo order.
+  unsubHabits = onSnapshot(habitsRef, snap => {
+    habits = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const ao = a.order ?? a.createdAt?.seconds ?? 0;
+        const bo = b.order ?? b.createdAt?.seconds ?? 0;
+        return ao - bo;
+      });
     renderHabits();
     renderDashboard();
     // FIX: subscribeLogs non viene più richiamata qui ad ogni snapshot habits.
@@ -512,10 +663,11 @@ function buildHabitCard(habit) {
 
   if (isSkipped) card.classList.add('skipped');
 
-  // Emoji
+  // Emoji — funge anche da drag handle, mostriamo cursore grab
   const emojiEl = document.createElement('div');
-  emojiEl.className = 'habit-emoji';
+  emojiEl.className = 'habit-emoji drag-handle';
   emojiEl.textContent = habit.emoji || '🌱';
+  emojiEl.title = 'Tieni premuto per trascinare';
 
   // Info
   const info = document.createElement('div');
@@ -609,18 +761,21 @@ function buildHabitCard(habit) {
   card.appendChild(leds);
   card.appendChild(action);
 
-  // Long press → Azioni (Action Sheet)
+  // Long press → Azioni (Action Sheet) — solo se non stiamo trascinando
   let pressTimer;
   const longPressHandler = () => {
-    // Vibrazione se supportata
+    if (dragState) return; // ignora se drag in corso
     if (navigator.vibrate) navigator.vibrate(50);
     openActionSheet(habit);
   };
   card.addEventListener('touchstart', () => { pressTimer = setTimeout(longPressHandler, 600); });
-  card.addEventListener('touchend', () => clearTimeout(pressTimer));
-  card.addEventListener('touchmove', () => clearTimeout(pressTimer));
-  card.addEventListener('mousedown', () => { pressTimer = setTimeout(longPressHandler, 600); });
-  card.addEventListener('mouseup', () => clearTimeout(pressTimer));
+  card.addEventListener('touchend',   () => clearTimeout(pressTimer));
+  card.addEventListener('touchmove',  () => clearTimeout(pressTimer));
+  card.addEventListener('mousedown',  () => { pressTimer = setTimeout(longPressHandler, 600); });
+  card.addEventListener('mouseup',    () => clearTimeout(pressTimer));
+
+  // Drag & drop riordino (solo abitudini attive, non sospese)
+  if (!habit.paused) initDragOnCard(card, habit);
 
   return card;
 }
@@ -1220,13 +1375,19 @@ document.addEventListener('touchend', e => {
 
 // ─── STATS ───────────────────────────────────────────────────────
 function openStats() {
-  const view = document.getElementById('stats-view');
-  // Il toggle della vista ora è gestito da switchTab tramite .active
+  // Ogni volta che si apre la tab Statistiche, torniamo sempre alla dashboard
+  // e resettiamo lo stato del dettaglio così la prossima apertura riparte
+  // dalla scheda overview (non dall'ultima abitudine visitata).
   document.getElementById('stats-dashboard').classList.remove('hidden');
   document.getElementById('stats-detail-view').classList.add('hidden');
   document.getElementById('stats-main-title').textContent = 'Statistiche';
   document.getElementById('stats-back').classList.add('hidden');
-  
+
+  // Reset: nessuna abitudine selezionata, anno corrente, periodo "settimana"
+  statsHabitId = null;
+  statsViewYear = new Date().getFullYear();
+  currentChartPeriod = 'week';
+
   renderStatsDashboard();
 }
 
@@ -1301,6 +1462,10 @@ document.getElementById('stats-back').addEventListener('click', () => {
   document.getElementById('stats-dashboard').classList.remove('hidden');
   document.getElementById('stats-main-title').textContent = 'Statistiche';
   document.getElementById('stats-back').classList.add('hidden');
+  // Reset per la prossima apertura del dettaglio
+  statsHabitId = null;
+  statsViewYear = new Date().getFullYear();
+  currentChartPeriod = 'week';
 });
 
 function buildHabitChips() {
@@ -1314,8 +1479,10 @@ function buildHabitChips() {
       document.querySelectorAll('.stats-habit-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       statsHabitId = h.id;
-      // Quando cambiamo habit dal selettore "chips", resettiamo pure al mese corrente per default
-      renderStats(h.id); 
+      // Reset al periodo corrente ad ogni cambio abitudine
+      statsViewYear = new Date().getFullYear();
+      currentChartPeriod = 'week';
+      renderStats(h.id);
     });
     sel.appendChild(chip);
   });
