@@ -102,6 +102,39 @@ function getGreeting() {
   return 'Buonasera';
 }
 
+// ─── CONNECTION MONITOR ──────────────────────────────────────────
+// FIX: feedback visivo quando l'app va offline/torna online.
+// Le write offline vengono accodate automaticamente dal Firebase SDK
+// e inviate al ritorno della connessione.
+function initConnectionMonitor() {
+  const banner = document.createElement('div');
+  banner.id = 'offline-banner';
+  banner.textContent = '📵 Offline — le modifiche saranno sincronizzate al ritorno';
+  banner.style.cssText = `
+    display: none; position: fixed; top: 0; left: 0; right: 0;
+    background: #1e1e2a; color: #fbbf24;
+    border-bottom: 1px solid rgba(251,191,36,0.3);
+    text-align: center; font-size: 0.8rem; font-weight: 600;
+    padding: 8px 16px; z-index: 99999;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+  `;
+  document.body.appendChild(banner);
+
+  function setOnline() {
+    banner.style.display = 'none';
+    toast('🟢 Connessione ripristinata');
+  }
+  function setOffline() {
+    banner.style.display = 'block';
+  }
+
+  window.addEventListener('online',  setOnline);
+  window.addEventListener('offline', setOffline);
+
+  // Stato iniziale (nel caso si apra già offline)
+  if (!navigator.onLine) setOffline();
+}
+
 // Should a habit appear today?
 function habitScheduledFor(habit, dateString) {
   const d = new Date(dateString + 'T12:00:00');
@@ -256,7 +289,12 @@ function showApp() {
     currentUser.displayName || currentUser.email.split('@')[0];
   selectedDate = todayStr();
   buildDateStrip();
+  // FIX: le due subscription vengono avviate indipendentemente e rimangono
+  // stabili per tutta la sessione — i log non vengono più ri-sottoscritti
+  // ogni volta che cambia un'abitudine.
   subscribeHabits();
+  subscribeLogs();
+  initConnectionMonitor();
 }
 
 // Auth tabs
@@ -321,7 +359,9 @@ function subscribeHabits() {
     habits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderHabits();
     renderDashboard();
-    subscribeLogs();
+    // FIX: subscribeLogs non viene più richiamata qui ad ogni snapshot habits.
+    // Viene avviata una sola volta in showApp() per evitare che ogni
+    // modifica/aggiunta di abitudine distrugga e ricrei la subscription ai log.
   });
 }
 
@@ -334,10 +374,10 @@ function subscribeLogs() {
   unsubLogs = onSnapshot(logsRef, 
     snap => {
       console.log("Snapshot log ricevuto. Documenti:", snap.size);
-      // Invece di resettare tutto (logs = {}), aggiorniamo in modo incrementale
-      // per preservare eventuali update locali (ottimistici) non ancora sul server.
-      snap.docs.forEach(d => { 
-        logs[d.id] = d.data(); 
+      // FIX: merge profondo invece di sovrascrittura totale, per non perdere
+      // ottimistic updates locali ancora in volo verso Firestore.
+      snap.docs.forEach(d => {
+        logs[d.id] = { ...(logs[d.id] || {}), ...d.data() };
       });
       
       try {
@@ -653,7 +693,7 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
   const logRef = doc(db, 'users', currentUser.uid, 'logs', targetDate);
   
   if (!logs[targetDate]) logs[targetDate] = {};
-  const currentEntry = logs[targetDate][habitId];
+  const currentEntry = logs[targetDate][habitId]; // snapshot pre-modifica per rollback
 
   let newEntry;
   if (typeof valueOrUpdate === 'object' && valueOrUpdate !== null) {
@@ -668,28 +708,22 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
     }
   }
 
-  // Aggiornamento locale immediato per UI ultra-reattiva (OTTIMISTICO)
+  // Aggiornamento locale immediato (OTTIMISTICO)
   logs[targetDate][habitId] = newEntry;
   
   try {
-    // Se la data modificata è quella visualizzata nella Home, aggiorna la lista
     if (targetDate === selectedDate) {
       renderHabits();
       updateProgress();
     }
-    
-    // Dashboard (heatmaps home) e stats dashboard (heatmaps stats)
     if (typeof renderDashboard === 'function') renderDashboard(); 
     renderStatsDashboard(); 
     
-    // Aggiorna sempre le stats se la detail view è aperta (coerenza globale)
     const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
     if (detailVisible && statsHabitId) {
-      // Recuperiamo il mese/anno attualmente visualizzati nel calendario se presente
       const icalTitle = document.querySelector('.ical-title');
       let vYear = null, vMonth = null;
       if (icalTitle) {
-        // Formato: "Mese Anno" (es. "Marzo 2024")
         const parts = icalTitle.textContent.split(' ');
         if (parts.length === 2) {
           const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
@@ -698,14 +732,27 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
           vYear = parseInt(parts[1]);
         }
       }
-      console.log("Refresh dettaglio stats per", statsHabitId, "Mese:", vMonth, "Anno:", vYear);
       renderStats(statsHabitId, vYear, vMonth);
     }
   } catch (e) {
     console.warn("Errore durante refresh ottimistico:", e);
   }
   
-  await setDoc(logRef, { [habitId]: newEntry }, { merge: true });
+  // FIX: try/catch sulla write Firestore con rollback e feedback visivo
+  try {
+    await setDoc(logRef, { [habitId]: newEntry }, { merge: true });
+  } catch (err) {
+    console.error('saveLog — scrittura Firestore fallita:', err);
+    // Rollback ottimistico: ripristina il valore precedente
+    logs[targetDate][habitId] = currentEntry;
+    if (targetDate === selectedDate) {
+      renderHabits();
+      updateProgress();
+    }
+    if (typeof renderDashboard === 'function') renderDashboard();
+    renderStatsDashboard();
+    toast('⚠️ Salvataggio fallito. Controlla la connessione.');
+  }
 }
 
 // ─── LOG MODAL ───────────────────────────────────────────────────
@@ -981,26 +1028,38 @@ document.getElementById('save-habit-btn').addEventListener('click', async () => 
     duration: Number(document.getElementById('habit-duration').value) || null,
   };
 
-  if (editingHabitId) {
-    const ref = doc(db, 'users', currentUser.uid, 'habits', editingHabitId);
-    await setDoc(ref, habitData, { merge: true });
-    toast('Abitudine aggiornata!');
-  } else {
-    habitData.createdAt = serverTimestamp();
-    const ref = doc(collection(db, 'users', currentUser.uid, 'habits'));
-    await setDoc(ref, habitData);
-    toast(`${selectedEmoji} Abitudine aggiunta!`);
+  // FIX: try/catch su tutte le operazioni Firestore delle habits
+  try {
+    if (editingHabitId) {
+      const ref = doc(db, 'users', currentUser.uid, 'habits', editingHabitId);
+      await setDoc(ref, habitData, { merge: true });
+      toast('Abitudine aggiornata!');
+    } else {
+      habitData.createdAt = serverTimestamp();
+      const ref = doc(collection(db, 'users', currentUser.uid, 'habits'));
+      await setDoc(ref, habitData);
+      toast(`${selectedEmoji} Abitudine aggiunta!`);
+    }
+    closeHabitModal();
+  } catch (err) {
+    console.error('Errore salvataggio abitudine:', err);
+    toast('⚠️ Salvataggio fallito. Controlla la connessione.');
   }
-  closeHabitModal();
 });
 
 // Delete habit
 document.getElementById('delete-habit-btn').addEventListener('click', async () => {
   if (!editingHabitId) return;
   if (!confirm('Eliminare questa abitudine? I dati storici verranno persi.')) return;
-  await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', editingHabitId));
-  closeHabitModal();
-  toast('Abitudine eliminata.');
+  // FIX: try/catch su delete
+  try {
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', editingHabitId));
+    closeHabitModal();
+    toast('Abitudine eliminata.');
+  } catch (err) {
+    console.error('Errore eliminazione abitudine:', err);
+    toast('⚠️ Eliminazione fallita. Controlla la connessione.');
+  }
 });
 
 // ─── STREAK COMPUTATION ───────────────────────────────────────────
@@ -1662,8 +1721,13 @@ document.getElementById('btn-action-note').addEventListener('click', async () =>
   const currentNote = getHabitNoteOnDay(h, selectedDate);
   const note = prompt('Aggiungi una nota per oggi:', currentNote);
   if (note !== null) {
-     await saveLog(h.id, { note: note.trim() });
-     toast('Nota salvata!');
+     try {
+       await saveLog(h.id, { note: note.trim() });
+       toast('Nota salvata!');
+     } catch (err) {
+       console.error('Errore salvataggio nota:', err);
+       toast('⚠️ Salvataggio nota fallito.');
+     }
   }
   closeActionSheet();
 });
@@ -1672,8 +1736,13 @@ document.getElementById('btn-action-skip').addEventListener('click', async () =>
   const h = actionSheetHabit;
   if (!h) return;
   const isSkipped = isHabitSkippedOnDay(h, selectedDate);
-  await saveLog(h.id, { skip: !isSkipped });
-  toast(isSkipped ? 'Record ripristinato' : 'Giorno saltato (serie salvata)');
+  try {
+    await saveLog(h.id, { skip: !isSkipped });
+    toast(isSkipped ? 'Record ripristinato' : 'Giorno saltato (serie salvata)');
+  } catch (err) {
+    console.error('Errore skip:', err);
+    toast('⚠️ Operazione fallita. Controlla la connessione.');
+  }
   closeActionSheet();
 });
 
@@ -1681,8 +1750,13 @@ document.getElementById('btn-action-delete').addEventListener('click', async () 
   const h = actionSheetHabit;
   if (!h) return;
   if (confirm(`Eliminare definitivamente "${h.name}"?`)) {
-     await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', h.id));
-     toast('Abitudine eliminata');
+     try {
+       await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', h.id));
+       toast('Abitudine eliminata');
+     } catch (err) {
+       console.error('Errore eliminazione:', err);
+       toast('⚠️ Eliminazione fallita. Controlla la connessione.');
+     }
   }
   closeActionSheet();
 });
@@ -1691,10 +1765,15 @@ document.getElementById('btn-action-pause').addEventListener('click', async () =
   const h = actionSheetHabit;
   if (!h) return;
   const isPaused = h.paused || false;
-  await updateDoc(doc(db, 'users', currentUser.uid, 'habits', h.id), {
-     paused: !isPaused
-  });
-  toast(isPaused ? 'Abitudine ripresa' : 'Abitudine sospesa');
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'habits', h.id), {
+       paused: !isPaused
+    });
+    toast(isPaused ? 'Abitudine ripresa' : 'Abitudine sospesa');
+  } catch (err) {
+    console.error('Errore pausa/riprendi:', err);
+    toast('⚠️ Operazione fallita. Controlla la connessione.');
+  }
   closeActionSheet();
 });
 
