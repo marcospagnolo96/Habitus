@@ -941,12 +941,12 @@ function openLogModal(habit, targetDate = selectedDate) {
 
   if (habit.type === 'number') {
     const current = Number((logs[targetDate] || {})[habit.id] || 0);
-    let val = current;
+    let val = Math.max(0, current);
     const wrap = document.createElement('div');
     wrap.className = 'log-number-wrap';
     wrap.innerHTML = `
       <div class="log-number-display" style="align-items:center;">
-        <input type="number" id="log-num-val" value="${val}" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
+        <input type="number" id="log-num-val" value="${val}" min="0" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
         <span class="log-number-unit" style="margin-left:12px;">${habit.unit || ''}</span>
       </div>
       <div class="log-stepper">
@@ -956,7 +956,7 @@ function openLogModal(habit, targetDate = selectedDate) {
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn-primary'; saveBtn.textContent = 'Salva';
     saveBtn.addEventListener('click', async () => {
-      val = Number(document.getElementById('log-num-val').value) || 0;
+      val = Math.max(0, Number(document.getElementById('log-num-val').value) || 0);
       await saveLog(habit.id, val, targetDate);
       closeLogModal();
       toast(`${habit.emoji} Salvato: ${val} ${habit.unit || ''}`);
@@ -965,12 +965,16 @@ function openLogModal(habit, targetDate = selectedDate) {
     body.appendChild(wrap);
 
     const inputObj = document.getElementById('log-num-val');
+    // Impedisce la digitazione di valori negativi
+    inputObj.addEventListener('input', () => {
+      if (Number(inputObj.value) < 0) inputObj.value = 0;
+    });
     document.getElementById('step-up').addEventListener('click', () => {
-      val = Number(inputObj.value) || 0;
+      val = Math.max(0, Number(inputObj.value) || 0);
       val++; inputObj.value = val;
     });
     document.getElementById('step-down').addEventListener('click', () => {
-      val = Number(inputObj.value) || 0;
+      val = Math.max(0, Number(inputObj.value) || 0);
       if (val > 0) { val--; inputObj.value = val; }
     });
 
@@ -986,7 +990,7 @@ function openLogModal(habit, targetDate = selectedDate) {
     const minElapsed = Math.floor(logTimerElapsed / 60);
     wrap.innerHTML = `
       <div class="log-number-display" style="align-items:center;">
-        <input type="number" id="log-timer-val" value="${minElapsed}" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
+        <input type="number" id="log-timer-val" value="${minElapsed}" min="0" style="background:var(--bg3); border:2px solid var(--primary); border-radius:12px; outline:none; font-family:var(--font-display); font-size:3rem; color:var(--text); text-align:center; width:100px; padding:4px;" />
         <span class="log-number-unit" style="margin-left:12px;">min</span>
       </div>
       <div class="timer-log-display" id="log-timer-disp" style="font-size: 1.2rem; opacity: 0.6; margin-top: -10px;">${fmtTime(logTimerElapsed)}</div>
@@ -1016,11 +1020,10 @@ function openLogModal(habit, targetDate = selectedDate) {
       document.getElementById('log-timer-val').value = 0;
     });
     document.getElementById('log-timer-val').addEventListener('input', e => {
-      const m = Number(e.target.value);
-      if (m >= 0) {
-         logTimerElapsed = m * 60;
-         document.getElementById('log-timer-disp').textContent = fmtTime(logTimerElapsed);
-      }
+      const m = Math.max(0, Number(e.target.value) || 0);
+      e.target.value = m;
+      logTimerElapsed = m * 60;
+      document.getElementById('log-timer-disp').textContent = fmtTime(logTimerElapsed);
     });
   }
 
@@ -1661,7 +1664,13 @@ function renderInteractiveCalendar(container, habit, year, month) {
     const scheduled = habitScheduledFor(habit, ds);
     const done = scheduled && isHabitDayGoalMet(habit, ds);
     const future = ds > todayDs;
-    cell.className = 'ical-cell' + (!scheduled ? ' ical-unscheduled' : '') + (done ? ' ical-done' : '') + (ds === todayDs ? ' ical-today' : '') + (future ? ' ical-future' : '');
+    const skipped = isHabitSkippedOnDay(habit, ds);
+    cell.className = 'ical-cell'
+      + (!scheduled ? ' ical-unscheduled' : '')
+      + (done      ? ' ical-done'         : '')
+      + (skipped   ? ' ical-skipped'      : '')
+      + (ds === todayDs ? ' ical-today'   : '')
+      + (future    ? ' ical-future'       : '');
     const numEl = document.createElement('span');
     numEl.className = 'ical-num';
     numEl.textContent = i;
@@ -1672,22 +1681,95 @@ function renderInteractiveCalendar(container, habit, year, month) {
       check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
       cell.appendChild(check);
     }
+    // Indicatore "saltato" sulla cella
+    if (skipped) {
+      const skipMark = document.createElement('span');
+      skipMark.className = 'ical-skip-mark';
+      skipMark.textContent = '—';
+      cell.appendChild(skipMark);
+    }
+
+    // ── Tap: comportamento normale (toggle/log) ────────────────
     if (scheduled && !future && habit.type === 'boolean') {
       cell.classList.add('ical-clickable');
-      cell.addEventListener('click', async () => {
-        await toggleBoolean(habit, ds);
-        // La saveLog chiamerà renderStats preservando il mese corrente (cy, cm)
-      });
+      cell.addEventListener('click', async () => { await toggleBoolean(habit, ds); });
     } else if (scheduled && !future && (habit.type === 'number' || habit.type === 'timer')) {
       cell.classList.add('ical-clickable');
-      cell.addEventListener('click', () => {
-        openLogModal(habit, ds);
-      });
+      cell.addEventListener('click', () => { openLogModal(habit, ds); });
     }
+
+    // ── Long press: menu skip / nota (su tutti i giorni non futuri) ─
+    if (!future) {
+      let calPressTimer;
+      const openMenu = () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+        openCalendarCellMenu(habit, ds, cy, cm);
+      };
+      cell.addEventListener('touchstart', () => { calPressTimer = setTimeout(openMenu, 600); }, { passive: true });
+      cell.addEventListener('touchend',   () => clearTimeout(calPressTimer), { passive: true });
+      cell.addEventListener('touchmove',  () => clearTimeout(calPressTimer), { passive: true });
+      cell.addEventListener('mousedown',  () => { calPressTimer = setTimeout(openMenu, 600); });
+      cell.addEventListener('mouseup',    () => clearTimeout(calPressTimer));
+    }
+
     grid.appendChild(cell);
   }
   container.appendChild(grid);
   renderHabitNotes(container, habit, cy, cm);
+}
+
+// ─── CALENDAR CELL CONTEXT MENU ──────────────────────────────────
+// Mini action sheet per skip/nota direttamente dal calendario statistiche
+function openCalendarCellMenu(habit, ds, calYear, calMonth) {
+  const isSkipped = isHabitSkippedOnDay(habit, ds);
+  const currentNote = getHabitNoteOnDay(habit, ds);
+  const d = new Date(ds + 'T12:00:00');
+  const mShort = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+  const dateLabel = `${d.getDate()} ${mShort[d.getMonth()]}`;
+
+  // Riusa il modal action-sheet esistente nell'HTML
+  document.getElementById('action-sheet-emoji').textContent = habit.emoji;
+  document.getElementById('action-sheet-title').textContent = `${habit.name} · ${dateLabel}`;
+  document.getElementById('btn-skip-text').textContent = isSkipped ? 'Ripristina record' : 'Salta questo giorno';
+
+  // Salva i riferimenti per i listener
+  actionSheetHabit = habit;
+  // Sovrascriviamo temporaneamente selectedDate solo per i listener dello sheet
+  const prevDate = selectedDate;
+  selectedDate = ds;
+
+  // Mostra lo sheet
+  document.getElementById('action-sheet').classList.remove('hidden');
+
+  // Al chiusura ripristina la data selezionata e ri-renderizza il calendario
+  const restoreAndRefresh = () => {
+    selectedDate = prevDate;
+    // Ri-renderizza le stats preservando il mese del calendario
+    const icalTitle = document.querySelector('.ical-title');
+    let vYear = calYear, vMonth = calMonth;
+    if (icalTitle) {
+      const parts = icalTitle.textContent.split(' ');
+      if (parts.length === 2) {
+        const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                            'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+        const mi = monthNames.indexOf(parts[0]);
+        const yi = parseInt(parts[1]);
+        if (mi !== -1 && !isNaN(yi)) { vMonth = mi; vYear = yi; }
+      }
+    }
+    if (actionSheetHabit === null) renderStats(habit.id, vYear, vMonth);
+  };
+
+  // Override one-shot dei listener di chiusura per ripristinare la data
+  const closeBtn  = document.getElementById('action-sheet-close');
+  const backdrop  = document.getElementById('action-sheet').querySelector('.modal-backdrop');
+  const onClose = () => {
+    restoreAndRefresh();
+    closeBtn.removeEventListener('click', onClose);
+    backdrop.removeEventListener('click', onClose);
+  };
+  closeBtn.addEventListener('click', onClose);
+  backdrop.addEventListener('click', onClose);
 }
 
 function renderHabitNotes(container, habit, year, month) {
