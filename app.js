@@ -1533,150 +1533,153 @@ function renderRepsChart(container, habit, period) {
   container.innerHTML = '';
   const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-  const titleRow = document.createElement('div');
-  titleRow.className = 'section-title';
-  titleRow.textContent = 'Ripetizioni';
-  container.appendChild(titleRow);
-
-  const chartHeader = document.createElement('div');
-  chartHeader.className = 'reps-header';
-  const yrNav = document.createElement('div');
-  yrNav.className = 'stats-year-nav-sm';
-  yrNav.innerHTML = `
-    <button class="yr-btn-sm" id="yr-prev-chart"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
-    <span class="yr-label-sm">${statsViewYear}</span>
-    <button class="yr-btn-sm" id="yr-next-chart"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-  `;
+  // ── Anno + frecce centrati in cima (solo per week/month) ──────
   if (period !== 'year') {
-    container.appendChild(chartHeader);
-    chartHeader.appendChild(yrNav);
-    chartHeader.querySelector('#yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
-    chartHeader.querySelector('#yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
+    const yrRow = document.createElement('div');
+    yrRow.className = 'reps-header';
+    const yrNav = document.createElement('div');
+    yrNav.className = 'stats-year-nav-sm';
+    yrNav.innerHTML = `
+      <button class="yr-btn-sm" id="yr-prev-chart">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="yr-label-sm">${statsViewYear}</span>
+      <button class="yr-btn-sm" id="yr-next-chart">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+    yrNav.querySelector('#yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
+    yrNav.querySelector('#yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
+    yrRow.appendChild(yrNav);
+    container.appendChild(yrRow);
+  } else {
+    // Vista anno: titolo "Vista annuale"
+    const titleAnn = document.createElement('div');
+    titleAnn.style.cssText = 'text-align:center;font-family:var(--font-display);font-size:1.3rem;font-weight:400;color:var(--text);margin-bottom:4px;';
+    titleAnn.textContent = 'Vista annuale';
+    container.appendChild(titleAnn);
   }
 
+  // ── Sottotitolo "Ripetizioni" ─────────────────────────────────
+  const subTitle = document.createElement('div');
+  subTitle.className = 'reps-chart-title';
+  subTitle.textContent = 'Ripetizioni';
+  container.appendChild(subTitle);
+
+  // ── Calcolo barre ─────────────────────────────────────────────
   let bars = [];
   const todayDs = todayStr();
+
   if (period === 'week') {
-    // Show all 52/53 weeks of statsViewYear
     const jan1 = new Date(statsViewYear, 0, 1);
-    const day = jan1.getDay();
-    // Monday of the first week of the year
     const startOfFirstWeek = new Date(jan1);
-    startOfFirstWeek.setDate(jan1.getDate() - ((day + 6) % 7));
-    
+    startOfFirstWeek.setDate(jan1.getDate() - ((jan1.getDay() + 6) % 7));
     for (let i = 0; i < 53; i++) {
-      let wStart = new Date(startOfFirstWeek);
-      wStart.setDate(startOfFirstWeek.getDate() + (i * 7));
-      if (wStart.getFullYear() > statsViewYear && i >= 52) break; // Stop at next year
-      
-      let wVal = 0;
-      let hasToday = false;
+      const wStart = new Date(startOfFirstWeek);
+      wStart.setDate(startOfFirstWeek.getDate() + i * 7);
+      if (wStart.getFullYear() > statsViewYear && i >= 52) break;
+      let wVal = 0, hasToday = false;
       for (let d = 0; d < 7; d++) {
-        const dayDate = new Date(wStart);
-        dayDate.setDate(wStart.getDate() + d);
+        const dayDate = new Date(wStart); dayDate.setDate(wStart.getDate() + d);
         const ds = dateStr(dayDate);
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
         const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-
-        if (habit.type === 'boolean') {
-          if (isHabitDayGoalMet(habit, ds)) wVal++;
-        } else {
-          wVal += Number(val || 0);
-        }
+        if (habit.type === 'boolean') { if (isHabitDayGoalMet(habit, ds)) wVal++; }
+        else wVal += Number(val || 0);
       }
       const lbl = wStart.getDate() + ' ' + mNames[wStart.getMonth()].toLowerCase();
-      bars.push({ val: wVal, label: lbl, isToday: hasToday, scheduled: true });
+      bars.push({ val: wVal, label: lbl, isToday: hasToday });
     }
   } else if (period === 'month') {
-    // Show all 12 months of statsViewYear
     for (let m = 0; m < 12; m++) {
       const y = statsViewYear;
-      let mVal = 0;
+      let mVal = 0, hasToday = false;
       const daysInM = new Date(y, m + 1, 0).getDate();
-      let hasToday = false;
       for (let day = 1; day <= daysInM; day++) {
         const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         if (ds === todayDs) hasToday = true;
         const entry = (logs[ds] || {})[habit.id];
         const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-
-        if (habit.type === 'boolean') {
-          if (isHabitDayGoalMet(habit, ds)) mVal++;
-        } else {
-          mVal += Number(val || 0);
-        }
+        if (habit.type === 'boolean') { if (isHabitDayGoalMet(habit, ds)) mVal++; }
+        else mVal += Number(val || 0);
       }
-      bars.push({ val: mVal, label: mNames[m], isToday: hasToday, scheduled: true });
+      bars.push({ val: mVal, label: mNames[m], isToday: hasToday });
     }
   } else {
-    // Show all years that have at least one repetition
+    // Anno: mostra solo gli anni con dati + anno corrente, padding ±2
     const yearsWithData = new Set();
-    Object.keys(logs).forEach(dateStr => {
-      const entry = logs[dateStr][habit.id];
+    Object.keys(logs).forEach(ds => {
+      const entry = (logs[ds] || {})[habit.id];
       if (entry !== undefined && entry !== null) {
         const val = (typeof entry === 'object') ? entry.val : entry;
-        if (Number(val || 0) > 0) {
-          yearsWithData.add(dateStr.split('-')[0]);
-        }
+        if (habit.type === 'boolean' ? isHabitDayGoalMet(habit, ds) : Number(val || 0) > 0)
+          yearsWithData.add(parseInt(ds.split('-')[0]));
       }
     });
-
-    const sortedYears = Array.from(yearsWithData).sort();
-    if (sortedYears.length === 0) {
-      // Fallback to current year if no data
-      sortedYears.push(new Date().getFullYear().toString());
-    }
-
-    sortedYears.forEach(y => {
+    const curY = new Date().getFullYear();
+    yearsWithData.add(curY);
+    const minY = Math.min(...yearsWithData) - 2;
+    const maxY = Math.max(...yearsWithData) + 2;
+    for (let y = minY; y <= maxY; y++) {
       let yVal = 0;
-      const yearNum = parseInt(y);
       Object.keys(logs).forEach(ds => {
-        if (ds.startsWith(y)) {
+        if (ds.startsWith(String(y))) {
           const entry = (logs[ds] || {})[habit.id];
           const val = (typeof entry === 'object' && entry !== null) ? (entry.val || 0) : (entry || 0);
-
-          if (habit.type === 'boolean') {
-            if (isHabitDayGoalMet(habit, ds)) yVal++;
-          } else {
-            yVal += Number(val || 0);
-          }
+          if (habit.type === 'boolean') { if (isHabitDayGoalMet(habit, ds)) yVal++; }
+          else yVal += Number(val || 0);
         }
       });
-      bars.push({ val: yVal, label: y, isToday: yearNum === new Date().getFullYear(), scheduled: true });
-    });
+      bars.push({ val: yVal, label: String(y), isToday: y === curY });
+    }
   }
 
+  // ── Render barre ──────────────────────────────────────────────
   const chartWrap = document.createElement('div');
   chartWrap.className = `reps-chart-wrap period-${period}`;
   const maxVal = Math.max(...bars.map(b => b.val), 1);
-  const CHART_H = 90;
+  const CHART_H = 120; // altezza massima barra in px
+
   bars.forEach(b => {
-    const col = document.createElement('div'); col.className = 'reps-bar-col';
-    const track = document.createElement('div'); track.className = 'reps-bar-track';
-    const fill = document.createElement('div'); fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (!b.scheduled ? ' unscheduled' : '');
-    const fillH = b.val > 0 ? Math.max(Math.round((b.val / maxVal) * CHART_H), 4) : 0;
+    const col = document.createElement('div');
+    col.className = 'reps-bar-col';
+
+    // Valore sopra (solo se > 0)
+    const valLbl = document.createElement('div');
+    valLbl.className = 'reps-bar-val';
+    if (b.val > 0) {
+      let dVal = b.val;
+      if (habit.type === 'timer') dVal = Math.floor(b.val / 60);
+      valLbl.textContent = dVal;
+    }
+
+    // Track + fill
+    const track = document.createElement('div');
+    track.className = 'reps-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'reps-bar-fill' + (b.isToday ? ' today' : '') + (b.val === 0 ? ' unscheduled' : '');
+    const fillH = b.val > 0 ? Math.max(Math.round((b.val / maxVal) * CHART_H), 6) : 0;
     fill.style.height = fillH + 'px';
-    if (b.val > 0 && habit.type !== 'boolean') { fill.title = String(b.val); }
     track.appendChild(fill);
-    const valLbl = document.createElement('div'); valLbl.className = 'reps-bar-val';
-    let dVal = b.val;
-    if (habit.type === 'timer') dVal = Math.floor(b.val / 60);
-    if (dVal > 0) valLbl.textContent = dVal;
-    const lbl = document.createElement('div'); lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
+
+    // Label sotto
+    const lbl = document.createElement('div');
+    lbl.className = 'reps-bar-lbl' + (b.isToday ? ' today' : '');
     lbl.textContent = b.label;
-    col.appendChild(valLbl); col.appendChild(track); col.appendChild(lbl);
+
+    col.appendChild(valLbl);
+    col.appendChild(track);
+    col.appendChild(lbl);
     chartWrap.appendChild(col);
   });
   container.appendChild(chartWrap);
-  
 
+  // ── Selector Sett./Mese/Anno in fondo ────────────────────────
   const selRow = document.createElement('div');
   selRow.className = 'chart-period-row-bottom';
-  const periods = [{ key: 'week', label: 'Sett.' }, { key: 'month', label: 'Mese' }, { key: 'year', label: 'Anno' }];
   const btnRow = document.createElement('div');
   btnRow.className = 'chart-period-btns';
-  periods.forEach(p => {
+  [{ key: 'week', label: 'Settimana' }, { key: 'month', label: 'Mese' }, { key: 'year', label: 'Anno' }].forEach(p => {
     const btn = document.createElement('button');
     btn.className = 'chart-period-btn' + (p.key === period ? ' active' : '');
     btn.textContent = p.label;
@@ -1691,12 +1694,10 @@ function renderRepsChart(container, habit, period) {
 function openActionSheet(habit) {
   actionSheetHabit = habit;
   const isSkipped = isHabitSkippedOnDay(habit, selectedDate);
-  const isPaused = habit.paused || false;
   
   document.getElementById('action-sheet-emoji').textContent = habit.emoji;
   document.getElementById('action-sheet-title').textContent = habit.name;
   document.getElementById('btn-skip-text').textContent = isSkipped ? 'Ripristina record' : 'Salta record per oggi';
-  document.getElementById('btn-pause-text').textContent = isPaused ? 'Riprendi abitudine' : 'Sospendi abitudine';
   
   document.getElementById('action-sheet').classList.remove('hidden');
 }
@@ -1757,22 +1758,6 @@ document.getElementById('btn-action-delete').addEventListener('click', async () 
        console.error('Errore eliminazione:', err);
        toast('⚠️ Eliminazione fallita. Controlla la connessione.');
      }
-  }
-  closeActionSheet();
-});
-
-document.getElementById('btn-action-pause').addEventListener('click', async () => {
-  const h = actionSheetHabit;
-  if (!h) return;
-  const isPaused = h.paused || false;
-  try {
-    await updateDoc(doc(db, 'users', currentUser.uid, 'habits', h.id), {
-       paused: !isPaused
-    });
-    toast(isPaused ? 'Abitudine ripresa' : 'Abitudine sospesa');
-  } catch (err) {
-    console.error('Errore pausa/riprendi:', err);
-    toast('⚠️ Operazione fallita. Controlla la connessione.');
   }
   closeActionSheet();
 });
