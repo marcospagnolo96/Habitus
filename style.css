@@ -666,7 +666,7 @@ input::placeholder { color: var(--text3); }
 
 .stat-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; margin-bottom: 20px;
+  gap: 8px; margin-bottom: 20px;
 }
 .stat-card {
   background: var(--bg2);
@@ -880,7 +880,8 @@ input::placeholder { color: var(--text3); }
   font-weight: 600; margin-bottom: 20px;
 }
 
-/* Il wrapper principale delle barre */
+/* Il wrapper principale delle barre — altezza fissa uguale per tutti i periodi
+   così il layout non salta quando si passa da Settimana/Mese ad Anno */
 .reps-chart-wrap {
   display: flex; align-items: flex-end;
   gap: 6px;
@@ -890,6 +891,7 @@ input::placeholder { color: var(--text3); }
   scrollbar-width: none;
   padding: 24px 0 0;   /* spazio sopra per i valori */
   -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
 }
 .reps-chart-wrap::-webkit-scrollbar { display: none; }
 

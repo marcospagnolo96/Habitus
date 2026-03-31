@@ -1733,10 +1733,12 @@ function renderRepsChart(container, habit, period) {
   container.innerHTML = '';
   const mNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-  // ── Anno + frecce centrati in cima (solo per week/month) ──────
+  // ── Header identico per tutti i periodi (stessa altezza → no layout shift) ─
+  const yrRow = document.createElement('div');
+  yrRow.className = 'reps-header';
+
   if (period !== 'year') {
-    const yrRow = document.createElement('div');
-    yrRow.className = 'reps-header';
+    // Settimana / Mese: anno + frecce navigazione
     const yrNav = document.createElement('div');
     yrNav.className = 'stats-year-nav-sm';
     yrNav.innerHTML = `
@@ -1750,14 +1752,15 @@ function renderRepsChart(container, habit, period) {
     yrNav.querySelector('#yr-prev-chart').addEventListener('click', () => { statsViewYear--; renderRepsChart(container, habit, period); });
     yrNav.querySelector('#yr-next-chart').addEventListener('click', () => { statsViewYear++; renderRepsChart(container, habit, period); });
     yrRow.appendChild(yrNav);
-    container.appendChild(yrRow);
   } else {
-    // Vista anno: titolo "Vista annuale"
+    // Anno: stesso blocco ma con titolo fisso, senza frecce (occupa la stessa altezza)
     const titleAnn = document.createElement('div');
-    titleAnn.style.cssText = 'text-align:center;font-family:var(--font-display);font-size:1.3rem;font-weight:400;color:var(--text);margin-bottom:4px;';
+    titleAnn.className = 'stats-year-nav-sm';
+    titleAnn.style.cssText = 'font-family:var(--font-display);font-size:1.5rem;font-weight:400;color:var(--text);';
     titleAnn.textContent = 'Vista annuale';
-    container.appendChild(titleAnn);
+    yrRow.appendChild(titleAnn);
   }
+  container.appendChild(yrRow);
 
   // ── Sottotitolo "Ripetizioni" ─────────────────────────────────
   const subTitle = document.createElement('div');
