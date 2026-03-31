@@ -1161,11 +1161,11 @@ input::placeholder { color: var(--text3); }
 /* Padding superiore aumentato così il nome dell'abitudine
    ha più respiro dal bordo arrotondato dello sheet */
 #action-sheet .modal-sheet { padding-top: 8px; }
-#action-sheet .modal-body  { padding-top: 24px; }
+#action-sheet .modal-body  { padding-top: 24px; padding-left: 8px; padding-right: 8px; }
 
 .action-sheet-header {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 0 16px;
+  padding: 8px 8px 16px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 8px;
 }
@@ -1177,7 +1177,7 @@ input::placeholder { color: var(--text3); }
 }
 .action-btn {
   display: flex; align-items: center; gap: 14px;
-  width: 100%; padding: 13px 4px;
+  width: 100%; padding: 13px 8px;
   background: transparent; border: none;
   border-radius: 10px; color: var(--text);
   font-family: var(--font-body); font-size: 0.95rem; font-weight: 500;
