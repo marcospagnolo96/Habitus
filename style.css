@@ -301,6 +301,18 @@ input::placeholder { color: var(--text3); }
 .icon-btn:active { transform: scale(0.92); background: var(--bg2); }
 
 /* ─── DATE STRIP ─────────────────────────────────────────────── */
+
+/* Label data completa sopra la strip */
+.selected-date-label {
+  padding: 4px 20px 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+  min-height: 18px;
+}
+
 .date-strip-wrapper {
   overflow-x: auto; overflow-y: hidden;
   padding: 8px 16px;
@@ -318,25 +330,37 @@ input::placeholder { color: var(--text3); }
   gap: 4px; padding: 8px 12px;
   border-radius: 12px;
   background: var(--bg3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 48px;
+  position: relative;
 }
 .date-pill.active {
   background: var(--accent-dim);
   border-color: var(--accent);
 }
-.date-pill.future-day {
-  opacity: 0.35;
+.date-pill.future-day { opacity: 0.35; }
+
+/* Pallino verde sotto il numero per "oggi" */
+.date-pill.is-today .pill-num::after {
+  content: '';
+  display: block;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 2px auto 0;
 }
+/* Quando oggi è anche selezionato, il pallino diventa bg */
+.date-pill.is-today.active .pill-num::after {
+  background: var(--accent);
+  opacity: 0.6;
+}
+
 .date-pill .pill-day { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); font-weight: 600; }
 .date-pill .pill-num { font-size: 1.1rem; font-weight: 600; line-height: 1; }
 .date-pill.active .pill-day { color: var(--accent); }
 .date-pill.active .pill-num { color: var(--accent); }
-.date-pill.has-logs {
-  border-color: var(--accent);
-}
 
 /* ─── DAILY PROGRESS ─────────────────────────────────────────── */
 .daily-progress {

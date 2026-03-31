@@ -572,23 +572,24 @@ function buildDateStrip() {
   const strip = document.getElementById('date-strip');
   strip.innerHTML = '';
   const days = ['Do','Lu','Ma','Me','Gi','Ve','Sa'];
-  
-  const [sy] = selectedDate.split('-');
-  const year = parseInt(sy);
-  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-  const totalDays = isLeapYear ? 366 : 365;
 
-  for (let i = 1; i <= totalDays; i++) {
-    const d = new Date(year, 0, i);
+  // Finestra di 30 giorni: 14 prima di oggi + oggi + 15 dopo
+  const todayD = new Date(todayStr() + 'T12:00:00');
+  const BEFORE = 14;
+  const AFTER  = 15;
+
+  for (let i = -BEFORE; i <= AFTER; i++) {
+    const d = new Date(todayD);
+    d.setDate(todayD.getDate() + i);
     const ds = dateStr(d);
+
     const pill = document.createElement('div');
     let pillClass = 'date-pill';
-    if (ds === selectedDate) pillClass += ' active';
-    if (ds > todayStr()) pillClass += ' future-day';
+    if (ds === selectedDate)  pillClass += ' active';
+    if (ds > todayStr())      pillClass += ' future-day';
+    if (ds === todayStr())    pillClass += ' is-today';
     pill.className = pillClass;
     pill.dataset.date = ds;
-    const hasLog = habits.some(h => isHabitLoggedOnDay(h, ds));
-    if (hasLog) pill.classList.add('has-logs');
     pill.innerHTML = `
       <span class="pill-day">${days[d.getDay()]}</span>
       <span class="pill-num">${d.getDate()}</span>`;
@@ -600,14 +601,35 @@ function buildDateStrip() {
     });
     strip.appendChild(pill);
   }
-  
-  // Scroll to active date smoothly
+
+  // Aggiorna label data completa sopra la strip
+  updateSelectedDateLabel();
+
+  // Centra il pill selezionato
   setTimeout(() => {
     const active = strip.querySelector('.active');
-    if (active) {
-      active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
+    if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, 50);
+}
+
+function updateSelectedDateLabel() {
+  const el = document.getElementById('selected-date-label');
+  if (!el) return;
+  const d = new Date(selectedDate + 'T12:00:00');
+  const months = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+                  'luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  const days   = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+  const isToday    = selectedDate === todayStr();
+  const yesterday  = new Date(todayStr() + 'T12:00:00');
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = selectedDate === dateStr(yesterday);
+
+  let label = '';
+  if (isToday)         label = `Oggi, ${d.getDate()} ${months[d.getMonth()]}`;
+  else if (isYesterday) label = `Ieri, ${d.getDate()} ${months[d.getMonth()]}`;
+  else                  label = `${days[d.getDay()].charAt(0).toUpperCase() + days[d.getDay()].slice(1)}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+
+  el.textContent = label;
 }
 
 // ─── RENDER HABITS ───────────────────────────────────────────────
