@@ -1134,9 +1134,14 @@ input::placeholder { color: var(--text3); }
 .hidden { display: none !important; }
 
 /* ─── ACTION SHEET ────────────────────────────────────────────── */
+/* Padding superiore aumentato così il nome dell'abitudine
+   ha più respiro dal bordo arrotondato dello sheet */
+#action-sheet .modal-sheet { padding-top: 8px; }
+#action-sheet .modal-body  { padding-top: 24px; }
+
 .action-sheet-header {
   display: flex; align-items: center; gap: 10px;
-  padding-bottom: 16px;
+  padding: 8px 0 16px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 8px;
 }

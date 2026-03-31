@@ -1454,7 +1454,13 @@ function openHabitDetail(habitId) {
   
   statsHabitId = habitId;
   buildHabitChips();
-  renderStats(habitId); // All'apertura del dettaglio usiamo pure il mese corrente
+  renderStats(habitId);
+
+  // Scroll in cima ogni volta che si apre il dettaglio
+  requestAnimationFrame(() => {
+    const content = document.getElementById('stats-content');
+    if (content) content.scrollTop = 0;
+  });
 }
 
 document.getElementById('stats-back').addEventListener('click', () => {
@@ -1483,6 +1489,11 @@ function buildHabitChips() {
       statsViewYear = new Date().getFullYear();
       currentChartPeriod = 'week';
       renderStats(h.id);
+      // Scroll in cima
+      requestAnimationFrame(() => {
+        const content = document.getElementById('stats-content');
+        if (content) content.scrollTop = 0;
+      });
     });
     sel.appendChild(chip);
   });
@@ -1840,6 +1851,18 @@ function renderRepsChart(container, habit, period) {
     chartWrap.appendChild(col);
   });
   container.appendChild(chartWrap);
+
+  // Scrolla il grafico per portare la colonna "oggi" al centro del viewport
+  requestAnimationFrame(() => {
+    const todayCol = chartWrap.querySelector('.reps-bar-col:has(.reps-bar-lbl.today)') ||
+                     [...chartWrap.querySelectorAll('.reps-bar-col')].find((_, i) => bars[i]?.isToday);
+    if (todayCol) {
+      const wrapW   = chartWrap.offsetWidth;
+      const colLeft = todayCol.offsetLeft;
+      const colW    = todayCol.offsetWidth;
+      chartWrap.scrollLeft = colLeft - wrapW / 2 + colW / 2;
+    }
+  });
 
   // ── Selector Sett./Mese/Anno in fondo ────────────────────────
   const selRow = document.createElement('div');
