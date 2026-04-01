@@ -2068,5 +2068,34 @@ document.getElementById('btn-action-delete').addEventListener('click', async () 
 
 // ─── PWA SERVICE WORKER ──────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+
+    // Controlla se c'è già un SW in attesa al momento della registrazione
+    if (reg.waiting) {
+      reg.waiting.postMessage('SKIP_WAITING');
+    }
+
+    // Ascolta nuovi SW che entrano in stato "waiting" dopo l'install
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // C'è un aggiornamento pronto: attiva subito e ricarica
+          newWorker.postMessage('SKIP_WAITING');
+        }
+      });
+    });
+
+  }).catch(() => {});
+
+  // Quando il SW attivo cambia (dopo SKIP_WAITING), ricarica la pagina
+  // per servire i nuovi file — una sola volta, non in loop
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 }
