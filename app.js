@@ -1559,7 +1559,10 @@ function renderStats(habitId, viewYear, viewMonth) {
     if (done) doneDays++;
     if (entry !== undefined && entry !== null && entry !== false) {
       if (habit.type === 'number' || habit.type === 'timer') {
-        totalValue += Number(entry); valueCount++;
+        const numVal = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
+        if (numVal !== undefined && numVal !== null && numVal !== false) {
+          totalValue += Number(numVal); valueCount++;
+        }
       }
     }
   }
