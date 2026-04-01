@@ -940,8 +940,9 @@ function openLogModal(habit, targetDate = selectedDate) {
   body.innerHTML = '';
 
   if (habit.type === 'number') {
-    const current = Number((logs[targetDate] || {})[habit.id] || 0);
-    let val = Math.max(0, current);
+    const rawEntry = (logs[targetDate] || {})[habit.id];
+    const current = (typeof rawEntry === 'object' && rawEntry !== null) ? (rawEntry.val ?? 0) : (rawEntry || 0);
+    let val = Math.max(0, Number(current));
     const wrap = document.createElement('div');
     wrap.className = 'log-number-wrap';
     wrap.innerHTML = `
@@ -979,7 +980,10 @@ function openLogModal(habit, targetDate = selectedDate) {
     });
 
   } else if (habit.type === 'timer') {
-    logTimerElapsed = Number((logs[targetDate] || {})[habit.id] || 0);
+    const rawEntry = (logs[targetDate] || {})[habit.id];
+    logTimerElapsed = Math.max(0, Number(
+      (typeof rawEntry === 'object' && rawEntry !== null) ? (rawEntry.val ?? 0) : (rawEntry || 0)
+    ));
     logTimerRunning = false;
     logTimerStart = null;
     if (logTimerInterval) clearInterval(logTimerInterval);
