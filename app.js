@@ -1538,11 +1538,31 @@ function renderStats(habitId, viewYear, viewMonth) {
   const today = new Date();
   let totalDays = 0, doneDays = 0, totalValue = 0, valueCount = 0;
 
-  // Find the first time the habit was actually done
-  let start = new Date(today); 
-  const completedDates = Object.keys(logs).filter(ds => isHabitDayGoalMet(habit, ds)).sort();
-  if (completedDates.length > 0) {
-    start = new Date(completedDates[0] + 'T12:00:00');
+  // Per abitudini boolean: parte dal primo giorno completato.
+  // Per number/timer: parte dal primo giorno in cui è stato inserito
+  // qualsiasi valore > 0, anche se inferiore all'obiettivo.
+  let start = new Date(today);
+
+  if (habit.type === 'boolean' || habit.type === 'days') {
+    const completedDates = Object.keys(logs)
+      .filter(ds => isHabitDayGoalMet(habit, ds))
+      .sort();
+    if (completedDates.length > 0) {
+      start = new Date(completedDates[0] + 'T12:00:00');
+    }
+  } else {
+    // number / timer: cerca il primo giorno con qualsiasi valore inserito
+    const loggedDates = Object.keys(logs)
+      .filter(ds => {
+        const entry = logs[ds][habit.id];
+        if (entry === undefined || entry === null || entry === false) return false;
+        const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
+        return Number(val || 0) > 0;
+      })
+      .sort();
+    if (loggedDates.length > 0) {
+      start = new Date(loggedDates[0] + 'T12:00:00');
+    }
   }
   start.setHours(0, 0, 0, 0);
 
@@ -1672,6 +1692,14 @@ function renderInteractiveCalendar(container, habit, year, month) {
     const done = scheduled && isHabitDayGoalMet(habit, ds);
     const future = ds > todayDs;
     const skipped = isHabitSkippedOnDay(habit, ds);
+
+    // Valore parziale: qualcosa è stato inserito ma l'obiettivo non è stato raggiunto
+    const entry = (logs[ds] || {})[habit.id];
+    const rawVal = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
+    const hasValue = !done && !skipped && !future
+      && (habit.type === 'number' || habit.type === 'timer')
+      && Number(rawVal || 0) > 0;
+
     cell.className = 'ical-cell'
       + (!scheduled ? ' ical-unscheduled' : '')
       + (done      ? ' ical-done'         : '')
@@ -1687,6 +1715,12 @@ function renderInteractiveCalendar(container, habit, year, month) {
       check.className = 'ical-check';
       check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
       cell.appendChild(check);
+    }
+    // Puntino per valore parziale inserito (non completato)
+    if (hasValue) {
+      const dot = document.createElement('span');
+      dot.className = 'ical-partial-dot';
+      cell.appendChild(dot);
     }
     // Indicatore "saltato" sulla cella
     if (skipped) {
