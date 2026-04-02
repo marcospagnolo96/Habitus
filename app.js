@@ -157,27 +157,61 @@ let dragState = null;
 //   startY, lastY, cards[], container }
 
 function initDragOnCard(card, habit) {
-  // Handle visibile solo toccando l'emoji (drag handle)
   const handle = card.querySelector('.habit-emoji');
   if (!handle) return;
 
+  let dragPressTimer = null;
+  const DRAG_DELAY = 500; // ms di pressione prima di attivare il drag
+
   // ── Touch (mobile) ────────────────────────────────────────────
   handle.addEventListener('touchstart', e => {
-    // Feedback tattile immediato
-    if (navigator.vibrate) navigator.vibrate(30);
-    startDrag(e.touches[0].clientY, card, habit);
+    const touch = e.touches[0];
+    dragPressTimer = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(30);
+      handle.classList.add('drag-active');
+      startDrag(touch.clientY, card, habit);
+    }, DRAG_DELAY);
+  }, { passive: true });
+
+  handle.addEventListener('touchmove', () => {
+    // Se l'utente scorre, cancella il drag imminente
+    if (dragPressTimer) { clearTimeout(dragPressTimer); dragPressTimer = null; }
+  }, { passive: true });
+
+  handle.addEventListener('touchend', () => {
+    if (dragPressTimer) { clearTimeout(dragPressTimer); dragPressTimer = null; }
+    handle.classList.remove('drag-active');
   }, { passive: true });
 
   document.addEventListener('touchmove', onDragMove, { passive: false });
-  document.addEventListener('touchend',  onDragEnd,  { passive: true  });
+  document.addEventListener('touchend',  () => {
+    handle.classList.remove('drag-active');
+    onDragEnd();
+  }, { passive: true });
 
   // ── Mouse (desktop) ───────────────────────────────────────────
   handle.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
-    startDrag(e.clientY, card, habit);
+    dragPressTimer = setTimeout(() => {
+      handle.classList.add('drag-active');
+      startDrag(e.clientY, card, habit);
+    }, DRAG_DELAY);
   });
+
+  handle.addEventListener('mouseup', () => {
+    if (dragPressTimer) { clearTimeout(dragPressTimer); dragPressTimer = null; }
+    handle.classList.remove('drag-active');
+  });
+
+  handle.addEventListener('mouseleave', () => {
+    if (dragPressTimer) { clearTimeout(dragPressTimer); dragPressTimer = null; }
+  });
+
   document.addEventListener('mousemove', onDragMove);
-  document.addEventListener('mouseup',   onDragEnd);
+  document.addEventListener('mouseup',   () => {
+    handle.classList.remove('drag-active');
+    onDragEnd();
+  });
 }
 
 function startDrag(clientY, card, habit) {
@@ -1584,8 +1618,11 @@ function renderStats(habitId, viewYear, viewMonth) {
     if (entry !== undefined && entry !== null && entry !== false) {
       if (habit.type === 'number' || habit.type === 'timer') {
         const numVal = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
-        if (numVal !== undefined && numVal !== null && numVal !== false) {
-          totalValue += Number(numVal); valueCount++;
+        const n = Number(numVal || 0);
+        // Conta solo le sessioni con un valore effettivo > 0
+        // (evita che sessioni a 0 o cambiate a 0 gonfino il divisore)
+        if (n > 0) {
+          totalValue += n; valueCount++;
         }
       }
     }

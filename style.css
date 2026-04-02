@@ -393,9 +393,16 @@ input::placeholder { color: var(--text3); }
 /* ─── DRAG & DROP ────────────────────────────────────────────── */
 .drag-handle {
   cursor: grab;
-  touch-action: none; /* evita scroll durante il drag */
+  touch-action: none;
+  transition: transform 0.15s, opacity 0.15s;
 }
 .drag-handle:active { cursor: grabbing; }
+
+/* Feedback visivo durante la pressione prolungata (prima del drag) */
+.drag-handle.drag-active {
+  transform: scale(0.9);
+  opacity: 0.7;
+}
 
 /* Card durante il drag: placeholder semitrasparente */
 .habit-card.dragging {
