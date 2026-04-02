@@ -632,30 +632,6 @@ input::placeholder { color: var(--text3); }
 .overlay-header h2 {
   font-family: var(--font-display);
   font-size: 1.4rem; font-weight: 400;
-  flex: 1; /* spinge il pulsante archiviate a destra */
-}
-
-/* Pulsante toggle archiviate — in alto a destra nell'header stats */
-.stats-archive-toggle {
-  position: relative;
-  flex-shrink: 0;
-}
-.stats-archive-toggle.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.archive-badge {
-  position: absolute;
-  top: -4px; right: -4px;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 0.55rem; font-weight: 800;
-  min-width: 14px; height: 14px;
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0 3px;
-  line-height: 1;
 }
 .back-btn {
   display: flex; align-items: center; gap: 4px;
