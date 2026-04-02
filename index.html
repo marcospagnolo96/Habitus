@@ -161,6 +161,10 @@
         <input type="text" id="habit-name" placeholder="Es. Meditazione, Palestra…" />
       </div>
       <div class="field-group">
+        <label>Descrizione <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.6;">— opzionale</span></label>
+        <textarea id="habit-description" placeholder="Es. 10 minuti di respirazione profonda ogni mattina…" rows="2"></textarea>
+      </div>
+      <div class="field-group">
         <label>Icona</label>
         <div class="emoji-picker" id="emoji-picker">
           <span class="emoji-opt selected" data-e="🌱">🌱</span>
@@ -240,6 +244,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn-primary" id="save-habit-btn">Salva abitudine</button>
+        <button class="btn-archive hidden" id="archive-habit-btn">Archivia abitudine</button>
         <button class="btn-danger hidden" id="delete-habit-btn">Elimina abitudine</button>
       </div>
     </div>
@@ -289,6 +294,36 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         Chiudi
       </button>
+  </div>
+</div>
+
+<!-- STATS HABIT CONTEXT MENU -->
+<div id="stats-habit-menu" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="action-sheet-header" id="stats-menu-header">
+      <span id="stats-menu-emoji"></span>
+      <span id="stats-menu-title"></span>
+    </div>
+    <div class="action-sheet-btns">
+      <button class="action-btn" id="stats-menu-edit">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Modifica abitudine
+      </button>
+      <button class="action-btn" id="stats-menu-archive">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        <span id="stats-menu-archive-text">Archivia abitudine</span>
+      </button>
+      <button class="action-btn danger" id="stats-menu-delete">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Elimina abitudine
+      </button>
+    </div>
+    <button class="action-btn-close" id="stats-menu-close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      Chiudi
+    </button>
   </div>
 </div>
 

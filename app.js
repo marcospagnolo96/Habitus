@@ -670,8 +670,9 @@ function updateSelectedDateLabel() {
 function renderHabits() {
   const container = document.getElementById('habits-container');
   const emptyState = document.getElementById('empty-state');
-  const hActive = habits.filter(h => !h.paused && habitScheduledFor(h, selectedDate));
-  const hPaused = habits.filter(h => h.paused);
+  // Le abitudini archiviate non appaiono nella vista oggi
+  const hActive = habits.filter(h => !h.paused && !h.archived && habitScheduledFor(h, selectedDate));
+  const hPaused = habits.filter(h => h.paused && !h.archived);
 
   // Clear old cards but keep empty state
   container.querySelectorAll('.habit-card, .paused-section-header').forEach(c => c.remove());
@@ -851,7 +852,7 @@ function freqLabel(habit) {
 
 // ─── PROGRESS ────────────────────────────────────────────────────
 function updateProgress() {
-  const todayHabits = habits.filter(h => habitScheduledFor(h, selectedDate));
+  const todayHabits = habits.filter(h => !h.archived && habitScheduledFor(h, selectedDate));
   const done = todayHabits.filter(h => isHabitDayGoalMet(h, selectedDate)).length;
   const total = todayHabits.length;
 
@@ -1105,6 +1106,7 @@ function openHabitModal(habit = null) {
 
   // Reset
   document.getElementById('habit-name').value = habit ? habit.name : '';
+  document.getElementById('habit-description').value = habit?.description || '';
   selectedEmoji = habit ? habit.emoji : '🌱';
   selectedColor = habit ? habit.color : '#4ade80';
   selectedType  = habit ? habit.type  : 'boolean';
@@ -1140,9 +1142,13 @@ function openHabitModal(habit = null) {
     el.classList.toggle('selected', selectedDays.map(String).includes(el.dataset.d));
   });
 
-  // Delete btn
-  const delBtn = document.getElementById('delete-habit-btn');
-  delBtn.classList.toggle('hidden', !habit);
+  // Delete e Archive btn: visibili solo in modifica
+  document.getElementById('delete-habit-btn').classList.toggle('hidden', !habit);
+  document.getElementById('archive-habit-btn').classList.toggle('hidden', !habit);
+  if (habit) {
+    document.getElementById('archive-habit-btn').textContent =
+      habit.archived ? 'Ripristina abitudine' : 'Archivia abitudine';
+  }
 
   document.getElementById('habit-modal').classList.remove('hidden');
 }
@@ -1235,6 +1241,7 @@ document.getElementById('save-habit-btn').addEventListener('click', async () => 
 
   const habitData = {
     name,
+    description: document.getElementById('habit-description').value.trim() || null,
     emoji: selectedEmoji,
     color: selectedColor,
     type: selectedType,
@@ -1262,6 +1269,24 @@ document.getElementById('save-habit-btn').addEventListener('click', async () => 
   } catch (err) {
     console.error('Errore salvataggio abitudine:', err);
     toast('⚠️ Salvataggio fallito. Controlla la connessione.');
+  }
+});
+
+// Archive habit
+document.getElementById('archive-habit-btn').addEventListener('click', async () => {
+  if (!editingHabitId) return;
+  const habit = habits.find(h => h.id === editingHabitId);
+  if (!habit) return;
+  const isArchived = habit.archived || false;
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'habits', editingHabitId), {
+      archived: !isArchived
+    });
+    closeHabitModal();
+    toast(isArchived ? 'Abitudine ripristinata' : 'Abitudine archiviata');
+  } catch (err) {
+    console.error('Errore archiviazione:', err);
+    toast('⚠️ Operazione fallita. Controlla la connessione.');
   }
 });
 
@@ -1457,57 +1482,128 @@ function openStats() {
 function renderStatsDashboard() {
   const dash = document.getElementById('stats-dashboard');
   dash.innerHTML = '';
-  
-  const grid = document.createElement('div');
-  grid.className = 'dashboard-grid';
-  
-  habits.forEach(habit => {
-    const card = document.createElement('div');
-    card.className = 'dashboard-card' + (habit.paused ? ' paused' : '');
-    card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
-    
-    const hdr = document.createElement('div');
-    hdr.className = 'dash-card-header';
-    hdr.innerHTML = `<span class="dash-emoji">${habit.emoji}</span><span class="dash-name">${habit.name}</span>`;
-    
-    const hm = document.createElement('div');
-    hm.className = 'dash-heatmap';
 
-    const today = new Date();
-    const currYear = today.getFullYear();
-    const currMonth = today.getMonth();
-    const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+  const active   = habits.filter(h => !h.archived);
+  const archived = habits.filter(h => h.archived);
 
-    const firstDay = new Date(currYear, currMonth, 1);
-    const offset = (firstDay.getDay() + 6) % 7;
-    for (let p = 0; p < offset; p++) {
-      const spacer = document.createElement('div');
-      spacer.className = 'dash-rect empty';
-      hm.appendChild(spacer);
-    }
+  const buildGrid = (list) => {
+    const grid = document.createElement('div');
+    grid.className = 'dashboard-grid';
+    list.forEach(habit => {
+      const card = document.createElement('div');
+      card.className = 'dashboard-card' + (habit.paused ? ' paused' : '') + (habit.archived ? ' archived' : '');
+      card.style.setProperty('--habit-color', habit.color || 'var(--accent)');
 
-    for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(currYear, currMonth, i);
-      const ds = dateStr(d);
-      const rect = document.createElement('div');
-      rect.className = 'dash-rect';
-      if (isHabitDayGoalMet(habit, ds)) {
-        rect.classList.add('on');
-      } else if (ds > todayStr()) {
-        rect.classList.add('future');
+      const hdr = document.createElement('div');
+      hdr.className = 'dash-card-header';
+      hdr.innerHTML = `<span class="dash-emoji">${habit.emoji}</span><span class="dash-name">${habit.name}</span>`;
+
+      const hm = document.createElement('div');
+      hm.className = 'dash-heatmap';
+      const today = new Date();
+      const currYear = today.getFullYear();
+      const currMonth = today.getMonth();
+      const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+      const firstDay = new Date(currYear, currMonth, 1);
+      const offset = (firstDay.getDay() + 6) % 7;
+      for (let p = 0; p < offset; p++) {
+        const sp = document.createElement('div'); sp.className = 'dash-rect empty'; hm.appendChild(sp);
       }
-      hm.appendChild(rect);
-    }
-    
-    card.appendChild(hdr);
-    card.appendChild(hm);
-    card.addEventListener('click', () => { openHabitDetail(habit.id); });
-    
-    grid.appendChild(card);
-  });
-  
-  dash.appendChild(grid);
+      for (let i = 1; i <= daysInMonth; i++) {
+        const d = new Date(currYear, currMonth, i);
+        const ds = dateStr(d);
+        const rect = document.createElement('div');
+        rect.className = 'dash-rect';
+        if (isHabitDayGoalMet(habit, ds)) rect.classList.add('on');
+        else if (ds > todayStr()) rect.classList.add('future');
+        hm.appendChild(rect);
+      }
+
+      card.appendChild(hdr);
+      card.appendChild(hm);
+
+      // Tap → dettaglio statistiche
+      card.addEventListener('click', () => { openHabitDetail(habit.id); });
+
+      // Long press → menu contestuale (modifica / archivia / elimina)
+      let menuTimer;
+      const openMenu = () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+        openStatsHabitMenu(habit);
+      };
+      card.addEventListener('touchstart', () => { menuTimer = setTimeout(openMenu, 500); }, { passive: true });
+      card.addEventListener('touchend',   () => clearTimeout(menuTimer), { passive: true });
+      card.addEventListener('touchmove',  () => clearTimeout(menuTimer), { passive: true });
+      card.addEventListener('mousedown',  () => { menuTimer = setTimeout(openMenu, 500); });
+      card.addEventListener('mouseup',    () => clearTimeout(menuTimer));
+      card.addEventListener('mouseleave', () => clearTimeout(menuTimer));
+
+      grid.appendChild(card);
+    });
+    return grid;
+  };
+
+  dash.appendChild(buildGrid(active));
+
+  if (archived.length > 0) {
+    const sep = document.createElement('div');
+    sep.className = 'paused-section-header';
+    sep.innerHTML = '<span>Archiviate</span>';
+    dash.appendChild(sep);
+    dash.appendChild(buildGrid(archived));
+  }
 }
+
+// ─── STATS HABIT CONTEXT MENU ────────────────────────────────────
+let statsMenuHabit = null;
+
+function openStatsHabitMenu(habit) {
+  statsMenuHabit = habit;
+  document.getElementById('stats-menu-emoji').textContent = habit.emoji;
+  document.getElementById('stats-menu-title').textContent = habit.name;
+  document.getElementById('stats-menu-archive-text').textContent =
+    habit.archived ? 'Ripristina abitudine' : 'Archivia abitudine';
+  document.getElementById('stats-habit-menu').classList.remove('hidden');
+}
+
+function closeStatsHabitMenu() {
+  document.getElementById('stats-habit-menu').classList.add('hidden');
+  statsMenuHabit = null;
+}
+
+document.getElementById('stats-menu-close').addEventListener('click', closeStatsHabitMenu);
+document.getElementById('stats-habit-menu').querySelector('.modal-backdrop').addEventListener('click', closeStatsHabitMenu);
+
+document.getElementById('stats-menu-edit').addEventListener('click', () => {
+  const h = statsMenuHabit; closeStatsHabitMenu();
+  if (h) openHabitModal(h);
+});
+
+document.getElementById('stats-menu-archive').addEventListener('click', async () => {
+  const h = statsMenuHabit; closeStatsHabitMenu();
+  if (!h) return;
+  const isArchived = h.archived || false;
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'habits', h.id), { archived: !isArchived });
+    toast(isArchived ? 'Abitudine ripristinata' : 'Abitudine archiviata');
+  } catch (err) {
+    console.error('Errore archiviazione:', err);
+    toast('⚠️ Operazione fallita. Controlla la connessione.');
+  }
+});
+
+document.getElementById('stats-menu-delete').addEventListener('click', async () => {
+  const h = statsMenuHabit; closeStatsHabitMenu();
+  if (!h) return;
+  if (!confirm(`Eliminare definitivamente "${h.name}"? I dati storici verranno persi.`)) return;
+  try {
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', h.id));
+    toast('Abitudine eliminata');
+  } catch (err) {
+    console.error('Errore eliminazione:', err);
+    toast('⚠️ Eliminazione fallita. Controlla la connessione.');
+  }
+});
 
 function openHabitDetail(habitId) {
   document.getElementById('stats-dashboard').classList.add('hidden');

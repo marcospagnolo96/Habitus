@@ -1128,7 +1128,48 @@ input::placeholder { color: var(--text3); }
   color: var(--accent);
 }
 
-/* ─── LOG MODAL CONTENT ──────────────────────────────────────── */
+/* ─── TEXTAREA DESCRIZIONE ───────────────────────────────────── */
+textarea {
+  width: 100%;
+  background: var(--bg3);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 13px 16px;
+  outline: none;
+  resize: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.2s;
+}
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: var(--text3); }
+
+/* ─── BOTTONE ARCHIVIA ───────────────────────────────────────── */
+.btn-archive {
+  width: 100%;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 10px;
+}
+.btn-archive:active { background: var(--bg3); }
+
+/* ─── DASHBOARD CARD ARCHIVIATA ──────────────────────────────── */
+.dashboard-card.archived {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
 .log-number-wrap {
   display: flex; flex-direction: column; align-items: center; gap: 20px;
   padding: 12px 0 24px;
