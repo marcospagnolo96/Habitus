@@ -40,6 +40,7 @@ let currentChartPeriod = 'week';
 let unsubHabits = null;
 let unsubLogs = null;
 let actionSheetHabit = null;
+let showArchived = false;
 
 // ─── THEME HANDLING ─────────────────────────────────────────────
 const btnThemeToggle = document.getElementById('btn-theme-toggle');
@@ -543,7 +544,7 @@ function subscribeHabits() {
         return ao - bo;
       });
     renderHabits();
-    renderDashboard();
+    renderStatsDashboard();
     // FIX: subscribeLogs non viene più richiamata qui ad ogni snapshot habits.
     // Viene avviata una sola volta in showApp() per evitare che ogni
     // modifica/aggiunta di abitudine distrugga e ricrei la subscription ai log.
@@ -568,7 +569,6 @@ function subscribeLogs() {
       try {
         renderHabits();
         updateProgress();
-        renderDashboard(); 
         renderStatsDashboard(); 
         
         if (statsHabitId) {
@@ -928,8 +928,7 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
       renderHabits();
       updateProgress();
     }
-    if (typeof renderDashboard === 'function') renderDashboard(); 
-    renderStatsDashboard(); 
+    renderStatsDashboard();
     
     const detailVisible = !document.getElementById('stats-detail-view').classList.contains('hidden');
     if (detailVisible && statsHabitId) {
@@ -961,7 +960,6 @@ async function saveLog(habitId, valueOrUpdate, targetDate = selectedDate) {
       renderHabits();
       updateProgress();
     }
-    if (typeof renderDashboard === 'function') renderDashboard();
     renderStatsDashboard();
     toast('⚠️ Salvataggio fallito. Controlla la connessione.');
   }
@@ -1463,19 +1461,15 @@ document.addEventListener('touchend', e => {
 
 // ─── STATS ───────────────────────────────────────────────────────
 function openStats() {
-  // Ogni volta che si apre la tab Statistiche, torniamo sempre alla dashboard
-  // e resettiamo lo stato del dettaglio così la prossima apertura riparte
-  // dalla scheda overview (non dall'ultima abitudine visitata).
   document.getElementById('stats-dashboard').classList.remove('hidden');
   document.getElementById('stats-detail-view').classList.add('hidden');
   document.getElementById('stats-main-title').textContent = 'Statistiche';
   document.getElementById('stats-back').classList.add('hidden');
-
-  // Reset: nessuna abitudine selezionata, anno corrente, periodo "settimana"
+  document.getElementById('btn-toggle-archived').classList.remove('hidden');
   statsHabitId = null;
   statsViewYear = new Date().getFullYear();
   currentChartPeriod = 'week';
-
+  showArchived = false;
   renderStatsDashboard();
 }
 
@@ -1485,6 +1479,33 @@ function renderStatsDashboard() {
 
   const active   = habits.filter(h => !h.archived);
   const archived = habits.filter(h => h.archived);
+
+  // Aggiorna stato visivo del pulsante toggle
+  const toggleBtn = document.getElementById('btn-toggle-archived');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', showArchived);
+    toggleBtn.title = showArchived ? 'Mostra attive' : 'Archiviate';
+    const badge = toggleBtn.querySelector('.archive-badge');
+    if (badge) {
+      badge.textContent = archived.length > 0 ? archived.length : '';
+      badge.style.display = archived.length > 0 ? '' : 'none';
+    }
+  }
+
+  // Lista da mostrare in base al toggle
+  const list = showArchived ? archived : active;
+
+  // Stato vuoto
+  if (list.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.style.height = '60%';
+    empty.innerHTML = showArchived
+      ? `<div class="empty-icon">📦</div><p>Nessuna abitudine archiviata.</p>`
+      : `<div class="empty-icon">◇</div><p>Nessuna abitudine ancora.<br/>Premi <strong>+</strong> per iniziare!</p>`;
+    dash.appendChild(empty);
+    return;
+  }
 
   const buildGrid = (list) => {
     const grid = document.createElement('div');
@@ -1521,11 +1542,8 @@ function renderStatsDashboard() {
 
       card.appendChild(hdr);
       card.appendChild(hm);
-
-      // Tap → dettaglio statistiche
       card.addEventListener('click', () => { openHabitDetail(habit.id); });
 
-      // Long press → menu contestuale (modifica / archivia / elimina)
       let menuTimer;
       const openMenu = () => {
         if (navigator.vibrate) navigator.vibrate(40);
@@ -1543,15 +1561,7 @@ function renderStatsDashboard() {
     return grid;
   };
 
-  dash.appendChild(buildGrid(active));
-
-  if (archived.length > 0) {
-    const sep = document.createElement('div');
-    sep.className = 'paused-section-header';
-    sep.innerHTML = '<span>Archiviate</span>';
-    dash.appendChild(sep);
-    dash.appendChild(buildGrid(archived));
-  }
+  dash.appendChild(buildGrid(list));
 }
 
 // ─── STATS HABIT CONTEXT MENU ────────────────────────────────────
@@ -1605,11 +1615,18 @@ document.getElementById('stats-menu-delete').addEventListener('click', async () 
   }
 });
 
+// Toggle archiviate/attive nella dashboard statistiche
+document.getElementById('btn-toggle-archived').addEventListener('click', () => {
+  showArchived = !showArchived;
+  renderStatsDashboard();
+});
+
 function openHabitDetail(habitId) {
   document.getElementById('stats-dashboard').classList.add('hidden');
   document.getElementById('stats-detail-view').classList.remove('hidden');
   document.getElementById('stats-main-title').textContent = 'Dettagli';
   document.getElementById('stats-back').classList.remove('hidden');
+  document.getElementById('btn-toggle-archived').classList.add('hidden');
   
   statsHabitId = habitId;
   buildHabitChips();
@@ -1627,7 +1644,7 @@ document.getElementById('stats-back').addEventListener('click', () => {
   document.getElementById('stats-dashboard').classList.remove('hidden');
   document.getElementById('stats-main-title').textContent = 'Statistiche';
   document.getElementById('stats-back').classList.add('hidden');
-  // Reset per la prossima apertura del dettaglio
+  document.getElementById('btn-toggle-archived').classList.remove('hidden');
   statsHabitId = null;
   statsViewYear = new Date().getFullYear();
   currentChartPeriod = 'week';
