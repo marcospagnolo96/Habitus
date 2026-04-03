@@ -313,7 +313,9 @@ function onDragEnd() {
   saveHabitsOrder(orderedIds);
 }
 
-// Should a habit appear today?
+// ─── SCHEDULING ──────────────────────────────────────────────────
+
+// Should a habit appear today? (usata nell'UI quotidiana)
 function habitScheduledFor(habit, dateString) {
   const d = new Date(dateString + 'T12:00:00');
   const dow = d.getDay(); // 0=Sun..6=Sat
@@ -1717,26 +1719,100 @@ function renderStats(habitId, viewYear, viewMonth) {
   const startDs = dateStr(start);
   const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
 
-  for (let i = diffDays; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const ds = dateStr(d);
-    if (ds < startDs) continue; 
-    
-    if (!habitScheduledFor(habit, ds)) continue;
-    totalDays++;
-    const entry = (logs[ds] || {})[habit.id];
-    const done = isHabitDayGoalMet(habit, ds);
-    if (done) doneDays++;
-    if (entry !== undefined && entry !== null && entry !== false) {
-      if (habit.type === 'number' || habit.type === 'timer') {
+  if (habit.freq === 'weekly' && habit.freqN) {
+    // ── Frequenza settimanale ────────────────────────────────────
+    // totalDays  = N × numero di settimane trascorse (dalla prima alla corrente)
+    // doneDays   = completamenti effettivi in ogni settimana (max N per sett.)
+    const weekMs = 7 * 24 * 3600 * 1000;
+    // Lunedì della settimana di start
+    const startDay = start.getDay();
+    const startMon = new Date(start);
+    startMon.setDate(start.getDate() - ((startDay + 6) % 7));
+    startMon.setHours(0, 0, 0, 0);
+    // Lunedì della settimana corrente
+    const todayDay = today.getDay();
+    const todayMon = new Date(today);
+    todayMon.setDate(today.getDate() - ((todayDay + 6) % 7));
+    todayMon.setHours(0, 0, 0, 0);
+
+    let wStart = new Date(startMon);
+    while (wStart <= todayMon) {
+      // Per ogni settimana contiamo i completamenti (max freqN)
+      let weekDone = 0;
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(wStart); day.setDate(wStart.getDate() + d);
+        const ds = dateStr(day);
+        if (ds > todayDs) break;
+        if (isHabitDayGoalMet(habit, ds)) weekDone++;
+      }
+      totalDays += habit.freqN;          // N occorrenze previste per settimana
+      doneDays  += Math.min(weekDone, habit.freqN);
+      wStart = new Date(wStart.getTime() + weekMs);
+    }
+
+  } else if (habit.freq === 'monthly' && habit.freqN) {
+    // ── Frequenza mensile ────────────────────────────────────────
+    // totalDays = N × numero di mesi trascorsi (pro-rata per il mese corrente)
+    // doneDays  = completamenti effettivi per mese (max N per mese)
+    let y = start.getFullYear(), m = start.getMonth();
+    const curY = today.getFullYear(), curM = today.getMonth();
+
+    while (y < curY || (y === curY && m <= curM)) {
+      const daysInM = new Date(y, m + 1, 0).getDate();
+      let monthDone = 0;
+      for (let d = 1; d <= daysInM; d++) {
+        const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (ds < startDs) continue;
+        if (ds > todayDs) break;
+        if (isHabitDayGoalMet(habit, ds)) monthDone++;
+      }
+      // Per il mese corrente il target è pro-rata: min(N, giorni passati del mese)
+      const isCurrentMonth = (y === curY && m === curM);
+      const target = isCurrentMonth
+        ? Math.min(habit.freqN, today.getDate())
+        : habit.freqN;
+      totalDays += target;
+      doneDays  += Math.min(monthDone, habit.freqN);
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+
+  } else {
+    // ── Frequenza daily / giorni fissi ──────────────────────────
+    // Loop giorno per giorno: conta solo i giorni schedulati
+    for (let i = diffDays; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const ds = dateStr(d);
+      if (ds < startDs) continue;
+      if (!habitScheduledFor(habit, ds)) continue;
+      totalDays++;
+      const entry = (logs[ds] || {})[habit.id];
+      const done = isHabitDayGoalMet(habit, ds);
+      if (done) doneDays++;
+      if (entry !== undefined && entry !== null && entry !== false) {
+        if (habit.type === 'number' || habit.type === 'timer') {
+          const numVal = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
+          const n = Number(numVal || 0);
+          if (n > 0) { totalValue += n; valueCount++; }
+        }
+      }
+    }
+  }
+
+  // Per number/timer con frequenza weekly/monthly calcola anche totalValue/valueCount
+  if (habit.freq === 'weekly' || habit.freq === 'monthly') {
+    if (habit.type === 'number' || habit.type === 'timer') {
+      for (let i = diffDays; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const ds = dateStr(d);
+        if (ds < startDs) continue;
+        const entry = (logs[ds] || {})[habit.id];
+        if (entry === undefined || entry === null || entry === false) continue;
         const numVal = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
         const n = Number(numVal || 0);
-        // Conta solo le sessioni con un valore effettivo > 0
-        // (evita che sessioni a 0 o cambiate a 0 gonfino il divisore)
-        if (n > 0) {
-          totalValue += n; valueCount++;
-        }
+        if (n > 0) { totalValue += n; valueCount++; }
       }
     }
   }
