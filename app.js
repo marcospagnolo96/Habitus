@@ -313,37 +313,7 @@ function onDragEnd() {
   saveHabitsOrder(orderedIds);
 }
 
-// ─── SCHEDULING ──────────────────────────────────────────────────
-
-// Usata nelle STATISTICHE: conta un giorno come "atteso" se rientra
-// nel periodo dell'abitudine, indipendentemente dalle completazioni già fatte.
-// Per weekly/monthly usa solo la quota N come capacità del periodo,
-// non guarda quanti giorni sono già stati completati prima.
-function habitExpectedForStats(habit, dateString) {
-  const d = new Date(dateString + 'T12:00:00');
-  switch (habit.freq) {
-    case 'daily': return true;
-    case 'days':  return (habit.freqDays || []).map(Number).includes(d.getDay());
-    case 'weekly': {
-      if (!habit.freqN) return true;
-      // Un giorno è "atteso" se è uno dei freqN giorni attesi nella settimana.
-      // Strategia: contiamo quanti giorni DELLA SETTIMANA (lun-dom) arrivano
-      // fino a questo giorno (incluso) e verifichiamo se siamo ancora entro quota.
-      const dow = d.getDay();
-      const day = dow === 0 ? 7 : dow; // 1=lun .. 7=dom
-      // I primi freqN giorni lavorativi della settimana sono "attesi"
-      return day <= habit.freqN;
-    }
-    case 'monthly': {
-      if (!habit.freqN) return true;
-      // Un giorno è "atteso" se il suo numero nel mese è <= freqN
-      return d.getDate() <= habit.freqN;
-    }
-    default: return true;
-  }
-}
-
-// Should a habit appear today? (usata nell'UI quotidiana)
+// Should a habit appear today?
 function habitScheduledFor(habit, dateString) {
   const d = new Date(dateString + 'T12:00:00');
   const dow = d.getDay(); // 0=Sun..6=Sat
@@ -1751,12 +1721,9 @@ function renderStats(habitId, viewYear, viewMonth) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const ds = dateStr(d);
-    if (ds < startDs) continue;
-
-    // Usa habitExpectedForStats invece di habitScheduledFor:
-    // conta il giorno come "previsto" in base alla frequenza impostata,
-    // senza che le completazioni precedenti alterino il conteggio.
-    if (!habitExpectedForStats(habit, ds)) continue;
+    if (ds < startDs) continue; 
+    
+    if (!habitScheduledFor(habit, ds)) continue;
     totalDays++;
     const entry = (logs[ds] || {})[habit.id];
     const done = isHabitDayGoalMet(habit, ds);
