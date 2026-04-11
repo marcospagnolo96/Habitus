@@ -1719,7 +1719,19 @@ function renderStats(habitId, viewYear, viewMonth) {
   const startDs = dateStr(start);
   const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
 
+  // DEBUG temporaneo — rimuovere dopo la diagnosi
+  console.log(`[Stats] ${habit.name} | freq=${habit.freq} freqN=${habit.freqN} type=${habit.type}`);
+  console.log(`[Stats] start=${startDs} today=${todayDs} diffDays=${diffDays}`);
+  console.log(`[Stats] Logs keys:`, Object.keys(logs));
   if (habit.freq === 'weekly' && habit.freqN) {
+    const allKeys = Object.keys(logs);
+    allKeys.forEach(ds => {
+      const entry = (logs[ds] || {})[habit.id];
+      const met = isHabitDayGoalMet(habit, ds);
+      if (entry !== undefined) console.log(`  ${ds}: entry=`, entry, '→ goalMet=', met);
+    });
+  }
+
     // ── Frequenza settimanale ────────────────────────────────────
     // totalDays  = N × numero di settimane trascorse (dalla prima alla corrente)
     // doneDays   = completamenti effettivi in ogni settimana (max N per sett.)
@@ -1736,27 +1748,32 @@ function renderStats(habitId, viewYear, viewMonth) {
     todayMon.setHours(0, 0, 0, 0);
 
     let wStart = new Date(startMon);
-    while (wStart <= todayMon) {
-      // Per ogni settimana contiamo i completamenti (max freqN)
+    while (true) {
+      const wStartDs = dateStr(wStart);
+      const todayMonDs = dateStr(todayMon);
+      if (wStartDs > todayMonDs) break; // oltre la settimana corrente
+
       let weekDone = 0;
       let daysPassedInWeek = 0;
       for (let d = 0; d < 7; d++) {
-        const day = new Date(wStart); day.setDate(wStart.getDate() + d);
+        const day = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + d);
         const ds = dateStr(day);
         if (ds > todayDs) break;
         daysPassedInWeek++;
         if (isHabitDayGoalMet(habit, ds)) weekDone++;
       }
-      // Per la settimana corrente (incompleta) il target è pro-rata:
-      // min(freqN, giorni già trascorsi nella settimana).
-      // Per le settimane passate il target è sempre freqN.
-      const isCurrentWeek = wStart.getTime() === todayMon.getTime();
+
+      // Settimana corrente: target pro-rata
+      // Settimane passate: target = freqN
+      const isCurrentWeek = wStartDs === todayMonDs;
       const weekTarget = isCurrentWeek
         ? Math.min(habit.freqN, daysPassedInWeek)
         : habit.freqN;
       totalDays += weekTarget;
       doneDays  += Math.min(weekDone, habit.freqN);
-      wStart = new Date(wStart.getTime() + weekMs);
+
+      // Avanza di 7 giorni usando setDate (rispetta DST locale)
+      wStart = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + 7);
     }
 
   } else if (habit.freq === 'monthly' && habit.freqN) {
