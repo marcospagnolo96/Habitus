@@ -1739,13 +1739,22 @@ function renderStats(habitId, viewYear, viewMonth) {
     while (wStart <= todayMon) {
       // Per ogni settimana contiamo i completamenti (max freqN)
       let weekDone = 0;
+      let daysPassedInWeek = 0;
       for (let d = 0; d < 7; d++) {
         const day = new Date(wStart); day.setDate(wStart.getDate() + d);
         const ds = dateStr(day);
         if (ds > todayDs) break;
+        daysPassedInWeek++;
         if (isHabitDayGoalMet(habit, ds)) weekDone++;
       }
-      totalDays += habit.freqN;          // N occorrenze previste per settimana
+      // Per la settimana corrente (incompleta) il target è pro-rata:
+      // min(freqN, giorni già trascorsi nella settimana).
+      // Per le settimane passate il target è sempre freqN.
+      const isCurrentWeek = wStart.getTime() === todayMon.getTime();
+      const weekTarget = isCurrentWeek
+        ? Math.min(habit.freqN, daysPassedInWeek)
+        : habit.freqN;
+      totalDays += weekTarget;
       doneDays  += Math.min(weekDone, habit.freqN);
       wStart = new Date(wStart.getTime() + weekMs);
     }
