@@ -1692,7 +1692,7 @@ function renderStats(habitId, viewYear, viewMonth) {
   // qualsiasi valore > 0, anche se inferiore all'obiettivo.
   let start = new Date(today);
 
-  if (habit.type === 'boolean' || habit.type === 'days') {
+  if (habit.type === 'boolean') {
     const completedDates = Object.keys(logs)
       .filter(ds => isHabitDayGoalMet(habit, ds))
       .sort();
@@ -1703,7 +1703,7 @@ function renderStats(habitId, viewYear, viewMonth) {
     // number / timer: cerca il primo giorno con qualsiasi valore inserito
     const loggedDates = Object.keys(logs)
       .filter(ds => {
-        const entry = logs[ds][habit.id];
+        const entry = (logs[ds] || {})[habit.id];
         if (entry === undefined || entry === null || entry === false) return false;
         const val = (typeof entry === 'object' && entry !== null) ? entry.val : entry;
         return Number(val || 0) > 0;
@@ -1788,13 +1788,26 @@ function renderStats(habitId, viewYear, viewMonth) {
 
   } else {
     // ── Frequenza daily / giorni fissi ──────────────────────────
-    // Loop giorno per giorno: conta solo i giorni schedulati
+    // Scheduling STATICO: non usa habitScheduledFor() che è dinamico
+    // (dipende dai log correnti e darebbe risultati sbagliati per lo storico).
     for (let i = diffDays; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const ds = dateStr(d);
-      if (ds < startDs) continue;
-      if (!habitScheduledFor(habit, ds)) continue;
+      if (ds < startDs || ds > todayDs) continue;
+
+      // Controlla se il giorno era schedulato (solo in base a freq/freqDays)
+      let scheduled = false;
+      if (habit.freq === 'daily') {
+        scheduled = true;
+      } else if (habit.freq === 'days') {
+        const dow = d.getDay();
+        scheduled = (habit.freqDays || []).map(Number).includes(dow);
+      } else {
+        scheduled = true;
+      }
+      if (!scheduled) continue;
+
       totalDays++;
       const entry = (logs[ds] || {})[habit.id];
       const done = isHabitDayGoalMet(habit, ds);
