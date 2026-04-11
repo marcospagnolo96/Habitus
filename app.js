@@ -1748,13 +1748,12 @@ function renderStats(habitId, viewYear, viewMonth) {
         if (isHabitDayGoalMet(habit, ds)) weekDone++;
       }
 
-      // Settimana corrente: target pro-rata; settimane passate: target = freqN
+      // Settimana corrente: target = quello che hai già fatto (no penalità per giorni restanti)
+      // Settimane passate: target = freqN (si contano come "dovevi fare N")
       const isCurrentWeek = wStartDs === todayMonDs;
-      const weekTarget = isCurrentWeek
-        ? Math.min(habit.freqN, daysPassedInWeek)
-        : habit.freqN;
+      const weekTarget = isCurrentWeek ? weekDone : habit.freqN;
       totalDays += weekTarget;
-      doneDays  += Math.min(weekDone, habit.freqN);
+      doneDays  += weekDone; // per la settimana corrente weekDone <= freqN sempre
 
       wStart = new Date(wStart.getFullYear(), wStart.getMonth(), wStart.getDate() + 7);
     }
