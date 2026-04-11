@@ -1867,6 +1867,12 @@ function renderStats(habitId, viewYear, viewMonth) {
 
   content.appendChild(grid);
 
+  // Grafico radar giorni della settimana
+  const radarWrap = document.createElement('div');
+  radarWrap.className = 'radar-section';
+  renderDayRadarChart(radarWrap, habit);
+  content.appendChild(radarWrap);
+
   const calWrap = document.createElement('div');
   calWrap.className = 'stats-cal-section';
   renderInteractiveCalendar(calWrap, habit, viewYear, viewMonth);
@@ -1877,6 +1883,139 @@ function renderStats(habitId, viewYear, viewMonth) {
   renderRepsChart(chartSection, habit, currentChartPeriod);
   content.appendChild(chartSection);
 }
+
+// ─── GRAFICO RADAR GIORNI SETTIMANA ──────────────────────────────
+function renderDayRadarChart(container, habit) {
+  container.innerHTML = '';
+
+  // Conta completamenti per ogni giorno della settimana (0=Dom..6=Sab)
+  // Usiamo tutto lo storico dei logs
+  const counts = [0, 0, 0, 0, 0, 0, 0]; // indice = getDay() (0=Dom)
+  Object.keys(logs).forEach(ds => {
+    if (isHabitDayGoalMet(habit, ds)) {
+      const d = new Date(ds + 'T12:00:00');
+      counts[d.getDay()]++;
+    }
+  });
+
+  // Riordina L M M G V S D (partendo da lunedì)
+  const ordered = [1, 2, 3, 4, 5, 6, 0]; // Mon=1..Sun=0
+  const dayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+  const dayValues = ordered.map(i => counts[i]);
+  const maxVal = Math.max(...dayValues, 1);
+
+  const title = document.createElement('div');
+  title.className = 'radar-title';
+  title.textContent = 'Giorni più attivi';
+  container.appendChild(title);
+
+  const N = 7;
+  const cx = 120, cy = 120, R = 85, innerR = 18;
+  const angleStep = (2 * Math.PI) / N;
+  const startAngle = -Math.PI / 2; // inizia dall'alto
+
+  // Costruisce punti del poligono dati
+  const dataPoints = dayValues.map((v, i) => {
+    const angle = startAngle + i * angleStep;
+    const r = innerR + ((v / maxVal) * (R - innerR));
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+
+  // SVG
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 240 240');
+  svg.setAttribute('width', '240');
+  svg.setAttribute('height', '240');
+  svg.style.cssText = 'display:block;margin:0 auto;overflow:visible;';
+
+  const habitColor = habit.color || 'var(--accent)';
+
+  // Griglie concentriche (3 livelli)
+  [0.33, 0.66, 1].forEach(level => {
+    const gridPts = Array.from({ length: N }, (_, i) => {
+      const angle = startAngle + i * angleStep;
+      const r = innerR + level * (R - innerR);
+      return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+    }).join(' ');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', gridPts);
+    poly.setAttribute('fill', 'none');
+    poly.setAttribute('stroke', 'rgba(255,255,255,0.07)');
+    poly.setAttribute('stroke-width', '1');
+    svg.appendChild(poly);
+  });
+
+  // Raggi (assi)
+  for (let i = 0; i < N; i++) {
+    const angle = startAngle + i * angleStep;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', cx);
+    line.setAttribute('y1', cy);
+    line.setAttribute('x2', cx + R * Math.cos(angle));
+    line.setAttribute('y2', cy + R * Math.sin(angle));
+    line.setAttribute('stroke', 'rgba(255,255,255,0.08)');
+    line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+  }
+
+  // Poligono dati (fill)
+  const fillPts = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+  const fillPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  fillPoly.setAttribute('points', fillPts);
+  fillPoly.setAttribute('fill', habitColor);
+  fillPoly.setAttribute('fill-opacity', '0.25');
+  fillPoly.setAttribute('stroke', habitColor);
+  fillPoly.setAttribute('stroke-width', '2');
+  fillPoly.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(fillPoly);
+
+  // Punti sui vertici del poligono
+  dataPoints.forEach((p, i) => {
+    if (dayValues[i] === 0) return;
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', p.x);
+    dot.setAttribute('cy', p.y);
+    dot.setAttribute('r', '4');
+    dot.setAttribute('fill', habitColor);
+    dot.setAttribute('stroke', 'var(--bg1,#0f0f14)');
+    dot.setAttribute('stroke-width', '1.5');
+    svg.appendChild(dot);
+  });
+
+  // Etichette giorni
+  for (let i = 0; i < N; i++) {
+    const angle = startAngle + i * angleStep;
+    const labelR = R + 18;
+    const lx = cx + labelR * Math.cos(angle);
+    const ly = cy + labelR * Math.sin(angle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', lx);
+    text.setAttribute('y', ly + 4);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-weight', '600');
+    text.setAttribute('fill', dayValues[i] > 0 ? habitColor : 'rgba(255,255,255,0.35)');
+    text.textContent = dayLabels[i];
+    svg.appendChild(text);
+
+    // Numero completamenti sotto l'etichetta
+    if (dayValues[i] > 0) {
+      const count = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      count.setAttribute('x', lx);
+      count.setAttribute('y', ly + 17);
+      count.setAttribute('text-anchor', 'middle');
+      count.setAttribute('font-size', '9');
+      count.setAttribute('fill', 'rgba(255,255,255,0.45)');
+      count.textContent = dayValues[i];
+      svg.appendChild(count);
+    }
+  }
+
+  container.appendChild(svg);
+}
+
 
 function renderInteractiveCalendar(container, habit, year, month) {
   container.innerHTML = '';
