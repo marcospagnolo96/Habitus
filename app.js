@@ -1867,12 +1867,6 @@ function renderStats(habitId, viewYear, viewMonth) {
 
   content.appendChild(grid);
 
-  // Grafico radar giorni della settimana
-  const radarWrap = document.createElement('div');
-  radarWrap.className = 'radar-section';
-  renderDayRadarChart(radarWrap, habit);
-  content.appendChild(radarWrap);
-
   const calWrap = document.createElement('div');
   calWrap.className = 'stats-cal-section';
   renderInteractiveCalendar(calWrap, habit, viewYear, viewMonth);
@@ -1882,6 +1876,12 @@ function renderStats(habitId, viewYear, viewMonth) {
   chartSection.className = 'stats-chart-section';
   renderRepsChart(chartSection, habit, currentChartPeriod);
   content.appendChild(chartSection);
+
+  // Grafico radar giorni della settimana — in fondo
+  const radarWrap = document.createElement('div');
+  radarWrap.className = 'radar-section';
+  renderDayRadarChart(radarWrap, habit);
+  content.appendChild(radarWrap);
 }
 
 // ─── GRAFICO RADAR GIORNI SETTIMANA ──────────────────────────────

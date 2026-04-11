@@ -869,6 +869,25 @@ input::placeholder { color: var(--text3); }
   margin-bottom: 24px;
 }
 
+/* ─── RADAR CHART ───────────────────────────────────────────────── */
+.radar-section {
+  margin-bottom: 32px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px 16px 16px;
+}
+.radar-title {
+  font-size: 0.78rem;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+
 .chart-period-row { display: none; } /* non più usato */
 .chart-period-row-bottom {
   display: flex; justify-content: center;
